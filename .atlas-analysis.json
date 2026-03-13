@@ -1,0 +1,138 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Bloqade Circuit",
+  "projectDescription": "Python SDK for neutral atom quantum computing with embedded domain-specific circuit languages",
+  "theme": "aspen",
+  "primaryColor": "#f41c7c",
+  "lightColor": "#1c1434",
+  "darkColor": "#fc7cbc",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/devices",
+              "concepts/tasks",
+              "concepts/qubits",
+              "concepts/circuits"
+            ]
+          },
+          {
+            "group": "Circuit Dialects",
+            "pages": [
+              "dialects/overview",
+              "dialects/qasm2",
+              "dialects/squin",
+              "dialects/stim",
+              "dialects/native",
+              "dialects/gemini"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/writing-circuits",
+              "guides/simulations",
+              "guides/analysis",
+              "guides/backends"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/device",
+              "api/task",
+              "api/types"
+            ]
+          },
+          {
+            "group": "QASM2",
+            "pages": [
+              "api/qasm2/overview",
+              "api/qasm2/dialects",
+              "api/qasm2/parser",
+              "api/qasm2/emitter"
+            ]
+          },
+          {
+            "group": "Squin",
+            "pages": [
+              "api/squin/overview",
+              "api/squin/gates",
+              "api/squin/noise",
+              "api/squin/stdlib"
+            ]
+          },
+          {
+            "group": "STIM",
+            "pages": [
+              "api/stim/overview",
+              "api/stim/circuit",
+              "api/stim/dialects"
+            ]
+          },
+          {
+            "group": "Simulators",
+            "pages": [
+              "api/simulators/pyqrack",
+              "api/simulators/cirq",
+              "api/simulators/qbraid"
+            ]
+          },
+          {
+            "group": "Analysis",
+            "pages": [
+              "api/analysis/validation",
+              "api/analysis/fidelity"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multiple circuit dialects (QASM2, STIM, Squin, Native, Gemini)",
+    "Abstract device and task interfaces for quantum execution",
+    "Support for multiple simulator backends (PyQrack, Cirq, QBraid)",
+    "Circuit analysis and validation tools",
+    "Noise modeling and error channels",
+    "Flexible compilation and rewrite passes"
+  ],
+  "publicApiSurface": [
+    "bloqade.device.AbstractDevice",
+    "bloqade.task.AbstractTask",
+    "bloqade.task.BatchFuture",
+    "bloqade.qasm2.loads",
+    "bloqade.qasm2.loadfile",
+    "bloqade.squin.kernel",
+    "bloqade.squin.gate",
+    "bloqade.squin.noise",
+    "bloqade.stim.Circuit",
+    "bloqade.stim.main",
+    "bloqade.native.kernel",
+    "bloqade.gemini.logical",
+    "bloqade.pyqrack.PyQrackInterpreter",
+    "bloqade.pyqrack.StackMemorySimulator",
+    "bloqade.pyqrack.DynamicMemorySimulator",
+    "bloqade.cirq_utils.emit",
+    "bloqade.qbraid",
+    "bloqade.analysis.validation",
+    "bloqade.analysis.fidelity"
+  ]
+}
