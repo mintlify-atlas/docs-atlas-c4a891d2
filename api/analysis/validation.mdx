@@ -1,0 +1,157 @@
+---
+title: "Validation"
+description: "Circuit validation analysis passes for Bloqade Circuit"
+icon: "shield-check"
+---
+
+## Overview
+
+The validation module provides analysis passes to verify the correctness of quantum circuits. These validation passes check for common errors such as gate no-cloning violations and other circuit constraints.
+
+## FlatKernelNoCloningValidation
+
+<ParamField path="FlatKernelNoCloningValidation" type="ValidationPass">
+  Validation pass that checks for no-cloning violations in flattened quantum kernels. This ensures that gates do not apply to the same qubit multiple times, which would violate the no-cloning theorem.
+</ParamField>
+
+### Class Definition
+
+```python
+from bloqade.analysis.validation.simple_nocloning import FlatKernelNoCloningValidation
+from kirin import ir
+
+@dataclass
+class FlatKernelNoCloningValidation(ValidationPass):
+    """Simple no-cloning validation for kernels that have been aggressively inlined."""
+```
+
+### Methods
+
+#### name()
+
+<ParamField path="name" type="method">
+  Returns the human-readable name of the validation pass.
+</ParamField>
+
+**Returns**
+
+<ResponseField name="return" type="str">
+  The name "No-Cloning Validation"
+</ResponseField>
+
+```python
+def name(self) -> str:
+    return "No-Cloning Validation"
+```
+
+#### get_required_analyses()
+
+<ParamField path="get_required_analyses" type="method">
+  Returns the list of analysis passes that must run before this validation pass.
+</ParamField>
+
+**Returns**
+
+<ResponseField name="return" type="list[type]">
+  A list containing the AddressAnalysis class, which tracks qubit addresses
+</ResponseField>
+
+```python
+def get_required_analyses(self) -> list[type]:
+    return [AddressAnalysis]
+```
+
+#### run()
+
+<ParamField path="run" type="method">
+  Executes the validation pass on a quantum circuit method.
+</ParamField>
+
+**Parameters**
+
+<ParamField path="method" type="ir.Method" required>
+  The IR method representing the quantum circuit to validate
+</ParamField>
+
+**Returns**
+
+<ResponseField name="frame" type="tuple[Any, list[ir.ValidationError]]">
+  A tuple containing:
+  - The analysis frame result
+  - A list of validation errors found (empty if validation passes)
+</ResponseField>
+
+```python
+def run(self, method: ir.Method) -> tuple[Any, list[ir.ValidationError]]:
+    analysis = _FlatKernelNoCloningAnalysis(method.dialects)
+    frame, _ = analysis.run(
+        method, *(EmptyLattice.bottom() for _ in range(len(method.args) - 1))
+    )
+    
+    self._analysis = analysis
+    errors = analysis.get_validation_errors()
+    
+    return frame, errors
+```
+
+### Usage Example
+
+```python
+from bloqade import squin
+from bloqade.analysis.validation.simple_nocloning import FlatKernelNoCloningValidation
+
+# Define a quantum kernel
+@squin.kernel
+def my_circuit():
+    q = squin.qalloc(2)
+    squin.x(q[0])
+    squin.cnot(q[0], q[1])
+    return q
+
+# Run the validation pass
+validation = FlatKernelNoCloningValidation()
+frame, errors = validation.run(my_circuit)
+
+if errors:
+    for error in errors:
+        print(f"Validation error: {error}")
+else:
+    print("Circuit passed validation!")
+```
+
+### Error Messages
+
+When a no-cloning violation is detected, the validation pass generates an error with the following format:
+
+```
+Gate {GATE_NAME} applies to the qubits {addresses} more than once.
+```
+
+Where:
+- `{GATE_NAME}` is the uppercase name of the gate operation
+- `{addresses}` is the set of qubit addresses that were accessed multiple times
+
+## Internal Components
+
+### _FlatKernelNoCloningAnalysis
+
+<Warning>
+  This is an internal analysis class. Use `FlatKernelNoCloningValidation` instead for public API.
+</Warning>
+
+The internal forward analysis that performs the actual no-cloning check. It extends `Forward[EmptyLattice]` from the Kirin analysis framework.
+
+**Key Properties:**
+- `keys`: `("validate.nocloning.flatkernel",)` - Analysis keys for caching
+- `lattice`: `EmptyLattice` - Uses empty lattice as this is a validation-only pass
+
+## Related APIs
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/concepts/circuits">
+    Learn about circuit abstractions
+  </Card>
+  <Card title="Fidelity Analysis" icon="chart-line" href="/api/analysis/fidelity">
+    Analyze circuit fidelity and noise
+  </Card>
+</CardGroup>

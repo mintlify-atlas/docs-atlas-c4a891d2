@@ -1,0 +1,104 @@
+---
+title: "Types"
+description: "Basic types used in Bloqade eDSLs"
+---
+
+## Qubit
+
+Runtime representation of a qubit.
+
+```python
+class Qubit(ABC)
+```
+
+This is the base class of more specific qubit types, such as a reference to a piece of quantum register in some quantum register dialects.
+
+<Note>
+  `Qubit` is an abstract base class. In practice, you will work with specific qubit implementations provided by your chosen quantum register dialect.
+</Note>
+
+**Example:**
+
+```python
+from bloqade.types import Qubit
+
+# Qubit is typically used as a type annotation
+def measure_qubit(q: Qubit) -> MeasurementResult:
+    # Your measurement logic here
+    pass
+```
+
+---
+
+## QubitType
+
+Kirin type for a qubit.
+
+```python
+QubitType = types.PyClass(Qubit)
+```
+
+This is the Kirin type system representation of the `Qubit` class, used for type checking and validation in Bloqade's internal type system.
+
+**Example:**
+
+```python
+from bloqade.types import QubitType
+from kirin import ir
+
+# Use QubitType for kernel parameter annotations
+@ir.kernel
+def my_kernel(q: QubitType) -> ir.Int:
+    # Kernel implementation
+    return 0
+```
+
+---
+
+## MeasurementResult
+
+Represents the result of a quantum measurement.
+
+```python
+from bloqade.types import MeasurementResult
+```
+
+<Note>
+  This type is imported from `bloqade.decoders.dialects.annotate.types` and provides the runtime representation of measurement outcomes.
+</Note>
+
+**Example:**
+
+```python
+from bloqade.types import MeasurementResult
+
+def process_measurement(result: MeasurementResult):
+    # Process measurement result
+    pass
+```
+
+---
+
+## MeasurementResultType
+
+Kirin type for measurement results.
+
+```python
+from bloqade.types import MeasurementResultType
+```
+
+<Note>
+  This type is imported from `bloqade.decoders.dialects.annotate.types` and is used for type checking measurement results in the Kirin type system.
+</Note>
+
+**Example:**
+
+```python
+from bloqade.types import MeasurementResultType
+from kirin import ir
+
+@ir.kernel
+def measure_and_process(q: QubitType) -> MeasurementResultType:
+    # Measurement logic
+    pass
+```

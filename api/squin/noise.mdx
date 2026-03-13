@@ -1,0 +1,245 @@
+---
+title: Noise Channels
+description: API reference for noise channel operations in Squin
+---
+
+## Overview
+
+Squin provides realistic noise modeling capabilities for quantum circuits. Noise channels can be applied to simulate errors that occur in real quantum hardware.
+
+## Single-Qubit Noise Channels
+
+### depolarize
+
+Apply a depolarizing noise channel to a qubit:
+
+```python
+squin.depolarize(p, qubit)
+```
+
+This randomly selects one of the Pauli operators X, Y, Z with probability `p / 3` each and applies it to the qubit. No operator is applied with probability `1 - p`.
+
+<ParamField path="p" type="float" required>
+  The probability with which a Pauli operator is applied (0 ≤ p ≤ 1)
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  The qubit to which the noise channel is applied
+</ParamField>
+
+### bit_flip
+
+Apply a bit flip error channel:
+
+```python
+squin.bit_flip(p, qubit)
+```
+
+Applies an X gate (bit flip) with probability `p`.
+
+<ParamField path="p" type="float" required>
+  Probability of a bit flip error (0 ≤ p ≤ 1)
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  The qubit to which the noise channel is applied
+</ParamField>
+
+### single_qubit_pauli_channel
+
+Apply a weighted Pauli error channel:
+
+```python
+squin.single_qubit_pauli_channel(px, py, pz, qubit)
+```
+
+Randomly selects one of the three Pauli operators X, Y, Z with the given probabilities. No error is applied with probability `1 - (px + py + pz)`.
+
+<ParamField path="px" type="float" required>
+  Probability of applying X gate
+</ParamField>
+
+<ParamField path="py" type="float" required>
+  Probability of applying Y gate
+</ParamField>
+
+<ParamField path="pz" type="float" required>
+  Probability of applying Z gate
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  The qubit to which the noise channel is applied
+</ParamField>
+
+### qubit_loss
+
+Apply a qubit loss (atom loss) channel:
+
+```python
+squin.qubit_loss(p, qubit)
+```
+
+The qubit is lost with probability `p`. This models atom loss in neutral atom quantum computers.
+
+<ParamField path="p" type="float" required>
+  Probability of the atom being lost (0 ≤ p ≤ 1)
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  The qubit to which the noise channel is applied
+</ParamField>
+
+## Two-Qubit Noise Channels
+
+### depolarize2
+
+Apply a symmetric two-qubit depolarization channel:
+
+```python
+squin.depolarize2(p, control, target)
+```
+
+Randomly selects one of the 15 Pauli products:
+
+`{IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ}`
+
+each with probability `p / 15`. No noise is applied with probability `1 - p`.
+
+<ParamField path="p" type="float" required>
+  The probability with which a Pauli product is applied (0 ≤ p ≤ 1)
+</ParamField>
+
+<ParamField path="control" type="Qubit" required>
+  The control qubit
+</ParamField>
+
+<ParamField path="target" type="Qubit" required>
+  The target qubit
+</ParamField>
+
+### two_qubit_pauli_channel
+
+Apply a weighted two-qubit Pauli product error:
+
+```python
+from kirin.dialects import ilist
+
+probabilities = ilist.IList([0.01, 0.01, 0.01, 0.01, 0.01, 
+                             0.01, 0.01, 0.01, 0.01, 0.01,
+                             0.01, 0.01, 0.01, 0.01, 0.01])
+squin.two_qubit_pauli_channel(probabilities, control, target)
+```
+
+Randomly selects one of the 15 Pauli products:
+
+`{IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ}`
+
+weighted with the corresponding probabilities. No error is applied with probability `1 - sum(probabilities)`.
+
+<Info>
+The order of probabilities must match the order of Pauli products listed above.
+</Info>
+
+<ParamField path="probabilities" type="ilist.IList[float, Literal[15]]" required>
+  A list of 15 probabilities for each Pauli product
+</ParamField>
+
+<ParamField path="control" type="Qubit" required>
+  The control qubit
+</ParamField>
+
+<ParamField path="target" type="Qubit" required>
+  The target qubit
+</ParamField>
+
+## Correlated Noise
+
+### correlated_qubit_loss
+
+Apply correlated qubit loss to groups of qubits:
+
+```python
+from kirin.dialects import ilist
+
+q1 = squin.qalloc(3)  # First group: qubits 0, 1, 2
+q2 = squin.qalloc(3)  # Second group: qubits 3, 4, 5
+squin.correlated_qubit_loss(0.5, ilist.IList([q1, q2]))
+```
+
+For each group of qubits, applies a correlated loss channel where all qubits within the group are lost together with probability `p`. Loss events are independent between different groups.
+
+<ParamField path="p" type="float" required>
+  Loss probability for each group (0 ≤ p ≤ 1)
+</ParamField>
+
+<ParamField path="qubits" type="ilist.IList[ilist.IList[Qubit, Any], Any]" required>
+  List of qubit groups. Each sublist represents a group of qubits to which a correlated loss channel is applied.
+</ParamField>
+
+## Broadcast Noise Operations
+
+Noise channels can be applied to multiple qubits at once using the broadcast API:
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def noisy_circuit():
+    qubits = squin.qalloc(10)
+    
+    # Apply Hadamard to all qubits
+    squin.broadcast.h(qubits)
+    
+    # Add depolarizing noise to all qubits
+    squin.broadcast.depolarize(0.01, qubits)
+    
+    # Measure
+    return squin.measure(qubits)
+```
+
+For broadcast noise operations:
+- **Single-qubit channels**: Use `qubits: ilist.IList[Qubit, Any]` instead of `qubit: Qubit`
+- **Two-qubit channels**: Use `controls: ilist.IList[Qubit, N]` and `targets: ilist.IList[Qubit, N]`
+
+## Example: Noisy Circuit
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def noisy_bell_state():
+    """Create a Bell state with realistic noise."""
+    q = squin.qalloc(2)
+    
+    # Apply gates with noise
+    squin.h(q[0])
+    squin.depolarize(0.01, q[0])  # 1% depolarizing noise after Hadamard
+    
+    squin.cx(q[0], q[1])
+    squin.depolarize2(0.02, q[0], q[1])  # 2% two-qubit depolarizing noise
+    
+    # Model atom loss
+    squin.qubit_loss(0.001, q[0])
+    squin.qubit_loss(0.001, q[1])
+    
+    return squin.measure(q)
+```
+
+## Low-Level Interface
+
+For advanced users, the low-level noise interface is available in `squin.noise._interface`:
+
+```python
+from bloqade.squin.noise import _interface as noise
+from kirin.dialects import ilist
+
+@squin.kernel
+def advanced_noise():
+    qubits = squin.qalloc(3)
+    
+    # Use low-level interface
+    noise.depolarize(0.05, qubits)
+    noise.single_qubit_pauli_channel(0.01, 0.02, 0.03, qubits)
+```
+
+The low-level interface provides the same operations but with broadcast semantics by default.

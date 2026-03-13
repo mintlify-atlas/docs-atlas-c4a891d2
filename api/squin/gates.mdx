@@ -1,0 +1,391 @@
+---
+title: Quantum Gates
+description: API reference for quantum gate operations in Squin
+---
+
+## Overview
+
+Squin provides a comprehensive set of quantum gates for circuit construction. All gates can be applied to single qubits or broadcast to multiple qubits.
+
+## Single-Qubit Pauli Gates
+
+### x
+
+Apply a Pauli-X (NOT) gate:
+
+```python
+squin.x(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### y
+
+Apply a Pauli-Y gate:
+
+```python
+squin.y(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### z
+
+Apply a Pauli-Z gate:
+
+```python
+squin.z(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Hadamard Gate
+
+### h
+
+Apply a Hadamard gate:
+
+```python
+squin.h(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Phase Gates
+
+### s
+
+Apply an S gate (π/2 phase gate):
+
+```python
+squin.s(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### s_adj
+
+Apply the adjoint of an S gate:
+
+```python
+squin.s_adj(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### t
+
+Apply a T gate (π/4 phase gate):
+
+```python
+squin.t(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### t_adj
+
+Apply the adjoint of a T gate:
+
+```python
+squin.t_adj(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### shift
+
+Apply a phase shift to the |1⟩ state:
+
+```python
+squin.shift(angle, qubit)
+```
+
+<ParamField path="angle" type="float" required>
+  Phase shift angle in radians
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Square Root Gates
+
+### sqrt_x
+
+Apply a √X gate:
+
+```python
+squin.sqrt_x(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### sqrt_x_adj
+
+Apply the adjoint of a √X gate:
+
+```python
+squin.sqrt_x_adj(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### sqrt_y
+
+Apply a √Y gate:
+
+```python
+squin.sqrt_y(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### sqrt_y_adj
+
+Apply the adjoint of a √Y gate:
+
+```python
+squin.sqrt_y_adj(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### sqrt_z
+
+Apply a √Z gate:
+
+```python
+squin.sqrt_z(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### sqrt_z_adj
+
+Apply the adjoint of a √Z gate:
+
+```python
+squin.sqrt_z_adj(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Rotation Gates
+
+### rx
+
+Apply an RX rotation gate:
+
+```python
+squin.rx(angle, qubit)
+```
+
+<ParamField path="angle" type="float" required>
+  Rotation angle in radians
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### ry
+
+Apply an RY rotation gate:
+
+```python
+squin.ry(angle, qubit)
+```
+
+<ParamField path="angle" type="float" required>
+  Rotation angle in radians
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### rz
+
+Apply an RZ rotation gate:
+
+```python
+squin.rz(angle, qubit)
+```
+
+<ParamField path="angle" type="float" required>
+  Rotation angle in radians
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Two-Qubit Gates
+
+### cx
+
+Apply a controlled-X (CNOT) gate:
+
+```python
+squin.cx(control, target)
+```
+
+<ParamField path="control" type="Qubit" required>
+  Control qubit
+</ParamField>
+
+<ParamField path="target" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### cy
+
+Apply a controlled-Y gate:
+
+```python
+squin.cy(control, target)
+```
+
+<ParamField path="control" type="Qubit" required>
+  Control qubit
+</ParamField>
+
+<ParamField path="target" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### cz
+
+Apply a controlled-Z gate:
+
+```python
+squin.cz(control, target)
+```
+
+<ParamField path="control" type="Qubit" required>
+  Control qubit
+</ParamField>
+
+<ParamField path="target" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Universal Gates
+
+### u3
+
+Apply a U3 gate with three rotation parameters:
+
+```python
+squin.u3(theta, phi, lam, qubit)
+```
+
+The U3 gate is defined as: U3(θ, φ, λ) = Rz(φ)Ry(θ)Rz(λ)
+
+<ParamField path="theta" type="float" required>
+  Rotation around Y axis (radians)
+</ParamField>
+
+<ParamField path="phi" type="float" required>
+  Global phase shift component (radians)
+</ParamField>
+
+<ParamField path="lam" type="float" required>
+  Z rotations in decomposition (radians)
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+### phased_xz
+
+Apply a PhasedXZ gate:
+
+```python
+squin.phased_xz(x_rad, z_rad, axis_phase_rad, qubit)
+```
+
+Equivalent to Rz(-axis_phase) Rx(x) Rz(axis_phase + z) with angles in radians.
+
+<ParamField path="x_rad" type="float" required>
+  X rotation angle in radians
+</ParamField>
+
+<ParamField path="z_rad" type="float" required>
+  Z rotation angle in radians
+</ParamField>
+
+<ParamField path="axis_phase_rad" type="float" required>
+  Axis phase (XY plane) in radians
+</ParamField>
+
+<ParamField path="qubit" type="Qubit" required>
+  Target qubit
+</ParamField>
+
+## Broadcast Operations
+
+All gates can also be applied to multiple qubits at once using the broadcast API:
+
+```python
+from bloqade import squin
+from kirin.dialects import ilist
+
+@squin.kernel
+def example():
+    qubits = squin.qalloc(5)
+    
+    # Apply Hadamard to all qubits
+    squin.broadcast.h(qubits)
+    
+    # Apply RX rotation to all qubits
+    squin.broadcast.rx(1.57, qubits)
+```
+
+For broadcast operations, the function signatures are identical except the `qubit` parameter becomes `qubits` with type `ilist.IList[Qubit, Any]`.
+
+## Example Circuit
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def bell_state():
+    """Create a Bell state."""
+    q = squin.qalloc(2)
+    
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    
+    return squin.measure(q)
+```

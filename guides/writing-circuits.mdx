@@ -1,0 +1,391 @@
+---
+title: Writing Circuits
+description: Best practices for creating quantum circuits with Bloqade Circuit dialects
+---
+
+## Overview
+
+Bloqade Circuit provides multiple embedded domain-specific languages (eDSLs) for creating quantum circuits. This guide covers best practices for writing circuits, composing subroutines, and applying rewrite passes for optimization.
+
+## Choosing a Dialect
+
+Select the dialect that best matches your workflow:
+
+<CardGroup cols={2}>
+  <Card title="Squin" icon="python">
+    Python-native quantum DSL with rich gate libraries and noise channels. Best for algorithmic development.
+  </Card>
+  <Card title="QASM2" icon="code">
+    Industry-standard OpenQASM 2.0 with extensions. Best for interoperability and hardware execution.
+  </Card>
+  <Card title="STIM" icon="chart-network">
+    Stabilizer circuit simulation. Best for quantum error correction and large-scale simulations.
+  </Card>
+  <Card title="Native" icon="microchip">
+    Direct neutral atom operations. Best for hardware-level control and optimization.
+  </Card>
+</CardGroup>
+
+## Basic Circuit Creation
+
+### Squin Circuits
+
+Squin provides a Python-native syntax for defining quantum circuits:
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def bell_state():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    return squin.broadcast.measure(q)
+```
+
+<Note>
+The `@squin.kernel` decorator compiles your Python function into an intermediate representation that can be executed on various backends.
+</Note>
+
+### QASM2 Circuits
+
+QASM2 dialect supports both programmatic and string-based circuit definitions:
+
+```python
+from bloqade import qasm2
+
+@qasm2.main
+def ghz_state():
+    q = qasm2.qreg(3)
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+    qasm2.cx(q[1], q[2])
+    return q
+```
+
+You can also load QASM from strings:
+
+```python
+qasm_str = """
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[3];
+creg c[3];
+h q[0];
+cx q[0], q[1];
+cx q[1], q[2];
+measure q -> c;
+"""
+
+main = qasm2.loads(qasm_str, returns="c")
+```
+
+## Circuit Composition
+
+### Defining Subroutines
+
+Break complex circuits into reusable subroutines:
+
+```python
+from kirin.dialects import ilist
+import typing
+
+@squin.kernel
+def prepare_superposition(qubits: ilist.IList[squin.qubit.Qubit, typing.Any]):
+    """Apply Hadamard to all qubits."""
+    for i in range(len(qubits)):
+        squin.h(qubits[i])
+
+@squin.kernel
+def entangle_adjacent(qubits: ilist.IList[squin.qubit.Qubit, typing.Any]):
+    """Create entanglement between adjacent qubits."""
+    for i in range(len(qubits) - 1):
+        squin.cx(qubits[i], qubits[i + 1])
+
+@squin.kernel
+def main():
+    q = squin.qalloc(4)
+    prepare_superposition(q)
+    entangle_adjacent(q)
+    return squin.broadcast.measure(q)
+```
+
+<Tip>
+Use type annotations to make your subroutines reusable across different qubit registers.
+</Tip>
+
+### Nested Kernels
+
+Kernels can call other kernels, allowing hierarchical circuit composition:
+
+```python
+@squin.kernel
+def controlled_rotation(ctrl, target, angle):
+    squin.h(target)
+    squin.cx(ctrl, target)
+    squin.rz(angle, target)
+    squin.cx(ctrl, target)
+    squin.h(target)
+
+@squin.kernel
+def multi_controlled_gate(qubits, angle):
+    n = len(qubits)
+    for i in range(n - 1):
+        controlled_rotation(qubits[i], qubits[-1], angle / (2 ** i))
+
+@squin.kernel
+def quantum_algorithm():
+    q = squin.qalloc(5)
+    multi_controlled_gate(q, 3.14159)
+    return q
+```
+
+### Returning Values
+
+Circuits can return qubits or measurement results:
+
+```python
+@squin.kernel
+def prepare_ancilla():
+    """Prepare an ancilla qubit in |+> state."""
+    q = squin.qalloc(1)
+    squin.h(q[0])
+    return q[0]
+
+@squin.kernel
+def use_ancilla():
+    ancilla = prepare_ancilla()
+    data = squin.qalloc(2)
+    squin.cx(ancilla, data[0])
+    squin.cx(ancilla, data[1])
+```
+
+<Warning>
+When emitting circuits to backends like Cirq, use `ignore_returns=True` if the kernel returns qubits:
+
+```python
+from bloqade.cirq_utils import emit_circuit
+circuit = emit_circuit(main, ignore_returns=True)
+```
+</Warning>
+
+## Parameterized Circuits
+
+### Using Variables
+
+Create parameterized circuits that accept runtime arguments:
+
+```python
+@squin.kernel
+def variational_layer(qubits, theta, phi):
+    """Single layer of a variational quantum circuit."""
+    for i in range(len(qubits)):
+        squin.rx(theta, qubits[i])
+        squin.rz(phi, qubits[i])
+    
+    for i in range(len(qubits) - 1):
+        squin.cx(qubits[i], qubits[i + 1])
+
+@squin.kernel
+def vqe_ansatz(qubits, params):
+    """Multi-layer VQE ansatz."""
+    num_layers = len(params) // 2
+    for layer in range(num_layers):
+        theta = params[2 * layer]
+        phi = params[2 * layer + 1]
+        variational_layer(qubits, theta, phi)
+```
+
+### Control Flow
+
+Use standard Python control flow in your circuits:
+
+```python
+@squin.kernel
+def conditional_operations():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    m = squin.measure(q[0])
+    
+    if m:
+        squin.x(q[1])
+    else:
+        squin.h(q[1])
+    
+    return squin.measure(q[1])
+
+@squin.kernel
+def repeated_gates():
+    q = squin.qalloc(4)
+    
+    # Apply X gate to all qubits
+    for i in range(4):
+        squin.x(q[i])
+```
+
+## Rewrite Passes
+
+### Aggressive Unroll
+
+Expand high-level operations into primitive gates:
+
+```python
+from bloqade.rewrite.passes import AggressiveUnroll
+
+@squin.kernel
+def circuit_with_broadcast():
+    q = squin.qalloc(3)
+    squin.broadcast.h(q)  # Broadcast Hadamard
+    squin.broadcast.x(q)  # Broadcast X
+
+# Unroll broadcast operations
+AggressiveUnroll(circuit_with_broadcast.dialects).fixpoint(circuit_with_broadcast)
+circuit_with_broadcast.print()  # Now shows individual H and X gates
+```
+
+### Gate Decomposition
+
+Rewrite non-Clifford gates into universal gate sets:
+
+```python
+from bloqade.squin.rewrite.non_clifford_to_U3 import RewriteNonCliffordToU3
+from kirin import rewrite
+
+@squin.kernel
+def circuit_with_rotations():
+    q = squin.qalloc(1)
+    squin.rx(1.57, q[0])  # π/2 rotation
+    squin.ry(0.78, q[0])
+    squin.t(q[0])
+
+# Decompose into U3 gates
+rule = rewrite.Walk(RewriteNonCliffordToU3())
+rule.rewrite(circuit_with_rotations.body)
+```
+
+### Constant Folding
+
+Optimize constant expressions at compile time:
+
+```python
+from kirin.passes import Fold
+
+@qasm2.main
+def optimizable_circuit():
+    q = qasm2.qreg(2)
+    # This will be folded at compile time
+    angle = 3.14159 / 4
+    qasm2.rx(angle, q[0])
+
+Fold(optimizable_circuit.dialects)(optimizable_circuit)
+```
+
+## Best Practices
+
+<Steps>
+<Step title="Start with clear structure">
+Organize your circuit into logical subroutines. This improves readability and reusability.
+</Step>
+
+<Step title="Use appropriate gate sets">
+Choose gates supported by your target backend. Check backend documentation for native gate sets.
+</Step>
+
+<Step title="Validate early">
+Use validation tools to catch errors before execution:
+
+```python
+from kirin.validation import ValidationSuite
+from bloqade.analysis.validation.simple_nocloning import FlatKernelNoCloningValidation
+
+validation_suite = ValidationSuite([FlatKernelNoCloningValidation])
+result = validation_suite.validate(circuit)
+result.raise_if_invalid()
+```
+</Step>
+
+<Step title="Print and inspect">
+Use `.print()` to inspect the intermediate representation:
+
+```python
+main.print()  # Shows the IR of your circuit
+```
+</Step>
+
+<Step title="Test with small examples">
+Start with small qubit counts and gradually scale up. This helps identify issues early.
+</Step>
+</Steps>
+
+## Common Patterns
+
+### Bell Pair Creation
+
+```python
+@squin.kernel
+def create_bell_pair():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    return q
+```
+
+### Quantum Fourier Transform
+
+```python
+import math
+
+@squin.kernel
+def qft(qubits):
+    n = len(qubits)
+    for i in range(n):
+        squin.h(qubits[i])
+        for j in range(i + 1, n):
+            angle = math.pi / (2 ** (j - i))
+            squin.shift(angle, qubits[j])  # Controlled phase
+```
+
+### Grover's Diffusion Operator
+
+```python
+@squin.kernel
+def diffusion_operator(qubits):
+    # Apply H to all qubits
+    for i in range(len(qubits)):
+        squin.h(qubits[i])
+    
+    # Apply X to all qubits
+    for i in range(len(qubits)):
+        squin.x(qubits[i])
+    
+    # Multi-controlled Z (simplified)
+    # In practice, decompose into controlled gates
+    squin.h(qubits[-1])
+    # ... controlled operations ...
+    squin.h(qubits[-1])
+    
+    # Apply X to all qubits
+    for i in range(len(qubits)):
+        squin.x(qubits[i])
+    
+    # Apply H to all qubits
+    for i in range(len(qubits)):
+        squin.h(qubits[i])
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Simulations" icon="play" href="/guides/simulations">
+    Learn how to run your circuits on different backends
+  </Card>
+  <Card title="Analysis" icon="chart-line" href="/guides/analysis">
+    Validate circuits and analyze fidelity
+  </Card>
+  <Card title="Backends" icon="server" href="/guides/backends">
+    Configure PyQrack, Cirq, and other simulators
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/device">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

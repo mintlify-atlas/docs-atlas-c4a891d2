@@ -1,0 +1,70 @@
+---
+title: STIM Overview
+description: Compile Bloqade circuits to STIM for fast Clifford circuit simulation
+---
+
+## Introduction
+
+The `bloqade.stim` module provides integration with [STIM](https://github.com/quantumlib/Stim), a fast stabilizer circuit simulator. This allows you to compile Bloqade Circuit kernels to STIM circuits for efficient simulation of Clifford circuits and stabilizer codes.
+
+## Key Features
+
+- **Native STIM Integration**: Compile kernels directly to `stim.Circuit` objects
+- **Dialect System**: Organized operations into gate, noise, collapse, and auxiliary dialects
+- **Full API Access**: Inherits all methods from STIM's Circuit class
+- **Type-Safe Operations**: Python-native function wrappers for all STIM operations
+
+## Installation
+
+To use the STIM backend, install Bloqade Circuit with STIM support:
+
+```bash
+pip install "bloqade-circuit[stim]"
+```
+
+## Quick Start
+
+```python
+from bloqade import stim
+
+# Define a kernel using the @stim.main decorator
+@stim.main
+def bell_state():
+    stim.h(targets=(0,))
+    stim.cx(controls=(0,), targets=(1,))
+    stim.mx(p=0.0, targets=(0, 1))
+
+# Compile to STIM circuit
+circuit = stim.Circuit(bell_state)
+
+# Use STIM's native methods
+sampler = circuit.compile_sampler()
+samples = sampler.sample(shots=1000)
+```
+
+## Module Structure
+
+The `bloqade.stim` module is organized into several components:
+
+- **Circuit Class**: Main interface for compiling kernels to STIM circuits
+- **Gate Operations**: Clifford gates, rotation gates, and controlled operations
+- **Measurement Operations**: Single-qubit and Pauli product measurements
+- **Noise Operations**: Depolarizing noise, Pauli channels, and error models
+- **Auxiliary Operations**: Detectors, observables, and circuit annotations
+
+## Dialects
+
+Operations are organized into four main dialects:
+
+1. **`gate`**: Quantum gates (Clifford and rotation gates)
+2. **`noise`**: Noise models and error channels
+3. **`collapse`**: Measurement and reset operations
+4. **`auxiliary`**: Metadata, detectors, and observables
+
+See the [Dialects](/api/stim/dialects) page for detailed documentation of all available operations.
+
+## Related Documentation
+
+- [Circuit Class](/api/stim/circuit): Compile kernels to STIM circuits
+- [Dialects](/api/stim/dialects): Complete reference of all STIM operations
+- [STIM Python API](https://github.com/quantumlib/Stim/blob/main/doc/python_api_reference_vDev.md): Official STIM documentation

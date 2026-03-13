@@ -1,0 +1,334 @@
+---
+title: Standard Library
+description: High-level functions and utilities in the Squin standard library
+---
+
+## Overview
+
+The Squin standard library (`squin.stdlib`) provides high-level convenience functions for common quantum circuit operations. It includes both single-qubit operations and broadcast operations for multiple qubits.
+
+## Module Organization
+
+The standard library is organized into two main submodules:
+
+- **`squin.stdlib.simple`**: Single-qubit operations
+- **`squin.stdlib.broadcast`**: Batch operations on multiple qubits
+
+## Simple Operations (Single Qubits)
+
+The `simple` module provides functions that operate on individual qubits. These are re-exported at the top level of `squin` for convenience.
+
+### Single-Qubit Gates
+
+All single-qubit gates from the gates API are available:
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def example():
+    q = squin.qalloc(1)
+    
+    # Pauli gates
+    squin.x(q)
+    squin.y(q)
+    squin.z(q)
+    
+    # Hadamard
+    squin.h(q)
+    
+    # Phase gates
+    squin.s(q)
+    squin.t(q)
+    squin.s_adj(q)
+    squin.t_adj(q)
+    
+    # Square root gates
+    squin.sqrt_x(q)
+    squin.sqrt_y(q)
+    squin.sqrt_z(q)
+    squin.sqrt_x_adj(q)
+    squin.sqrt_y_adj(q)
+    squin.sqrt_z_adj(q)
+    
+    # Rotation gates
+    squin.rx(1.57, q)
+    squin.ry(1.57, q)
+    squin.rz(1.57, q)
+    
+    # Universal gates
+    squin.u3(1.57, 0.0, 0.0, q)
+    squin.phased_xz(1.57, 0.0, 0.0, q)
+    
+    # Phase shift
+    squin.shift(0.785, q)
+```
+
+See the [Gates API reference](/api/squin/gates) for detailed documentation of each gate.
+
+### Two-Qubit Gates
+
+```python
+@squin.kernel
+def two_qubit_example():
+    q = squin.qalloc(2)
+    
+    # Controlled gates
+    squin.cx(q[0], q[1])
+    squin.cy(q[0], q[1])
+    squin.cz(q[0], q[1])
+```
+
+### Single-Qubit Noise
+
+Noise channels for single qubits:
+
+```python
+@squin.kernel
+def noisy_example():
+    q = squin.qalloc(1)
+    
+    # Depolarizing noise
+    squin.depolarize(0.01, q)
+    
+    # Bit flip
+    squin.bit_flip(0.01, q)
+    
+    # Weighted Pauli channel
+    squin.single_qubit_pauli_channel(0.01, 0.02, 0.03, q)
+    
+    # Atom loss
+    squin.qubit_loss(0.001, q)
+```
+
+### Two-Qubit Noise
+
+```python
+@squin.kernel
+def two_qubit_noise_example():
+    q = squin.qalloc(2)
+    
+    # Two-qubit depolarizing
+    squin.depolarize2(0.02, q[0], q[1])
+    
+    # Weighted two-qubit Pauli channel
+    from kirin.dialects import ilist
+    probs = ilist.IList([0.01] * 15)
+    squin.two_qubit_pauli_channel(probs, q[0], q[1])
+```
+
+See the [Noise API reference](/api/squin/noise) for detailed documentation of each noise channel.
+
+## Broadcast Operations (Multiple Qubits)
+
+The `broadcast` module provides efficient batch operations on lists of qubits. These functions are accessed via `squin.broadcast`.
+
+### Broadcast Gate Example
+
+```python
+from bloqade import squin
+from kirin.dialects import ilist
+
+@squin.kernel
+def broadcast_example():
+    qubits = squin.qalloc(10)
+    
+    # Apply Hadamard to all qubits
+    squin.broadcast.h(qubits)
+    
+    # Apply RX rotation to all qubits
+    squin.broadcast.rx(1.57, qubits)
+    
+    # Apply X gate to specific qubits
+    subset = ilist.IList([qubits[0], qubits[2], qubits[4]])
+    squin.broadcast.x(subset)
+```
+
+### Broadcast Noise Example
+
+```python
+@squin.kernel
+def broadcast_noise_example():
+    qubits = squin.qalloc(20)
+    
+    # Apply depolarizing noise to all qubits
+    squin.broadcast.depolarize(0.01, qubits)
+    
+    # Apply bit flip to all qubits
+    squin.broadcast.bit_flip(0.005, qubits)
+    
+    # Apply qubit loss to all qubits
+    squin.broadcast.qubit_loss(0.001, qubits)
+```
+
+### Broadcast Two-Qubit Operations
+
+Two-qubit operations can be broadcast over pairs of qubits:
+
+```python
+from kirin.dialects import ilist
+
+@squin.kernel
+def broadcast_two_qubit():
+    controls = squin.qalloc(5)
+    targets = squin.qalloc(5)
+    
+    # Apply CX to pairs: (controls[i], targets[i])
+    squin.broadcast.cx(controls, targets)
+    
+    # Apply two-qubit depolarizing noise
+    squin.broadcast.depolarize2(0.02, controls, targets)
+```
+
+<Warning>
+For two-qubit broadcast operations, the control and target lists must have the same length. The operation is applied to corresponding pairs.
+</Warning>
+
+## Correlated Qubit Loss
+
+The `correlated_qubit_loss` function applies correlated atom loss across groups of qubits:
+
+```python
+from kirin.dialects import ilist
+
+@squin.kernel
+def correlated_loss_example():
+    # Create two groups of qubits
+    group1 = squin.qalloc(3)
+    group2 = squin.qalloc(3)
+    
+    # Apply correlated loss: within each group, qubits are lost together
+    groups = ilist.IList([group1, group2])
+    squin.correlated_qubit_loss(0.1, groups)
+```
+
+<Info>
+Within each group, all qubits are lost together with probability `p`. Loss events between different groups are independent.
+</Info>
+
+## Qubit Utilities
+
+The standard library also re-exports qubit management functions:
+
+### qalloc
+
+Allocate qubits:
+
+```python
+q = squin.qalloc(5)  # Allocate 5 qubits
+```
+
+### reset
+
+Reset qubits to |0⟩:
+
+```python
+squin.reset(q)
+```
+
+### measure
+
+Measure qubits:
+
+```python
+result = squin.measure(q)
+```
+
+### Measurement Checks
+
+Check measurement outcomes:
+
+```python
+if squin.is_zero(result):
+    # Handle |0⟩
+    pass
+
+if squin.is_one(result):
+    # Handle |1⟩
+    pass
+
+if squin.is_lost(result):
+    # Handle atom loss
+    pass
+```
+
+### Qubit IDs
+
+Get qubit and measurement IDs:
+
+```python
+qubit_id = squin.get_qubit_id(q)
+measurement_id = squin.get_measurement_id(result)
+```
+
+## Complete Example
+
+```python
+from bloqade import squin
+from kirin.dialects import ilist
+
+@squin.kernel
+def qft_circuit(n: int):
+    """Quantum Fourier Transform with noise."""
+    qubits = squin.qalloc(n)
+    
+    for i in range(n):
+        # Hadamard on qubit i
+        squin.h(qubits[i])
+        squin.depolarize(0.01, qubits[i])
+        
+        # Controlled rotations
+        for j in range(i + 1, n):
+            angle = 3.14159 / (2 ** (j - i))
+            squin.cz(qubits[i], qubits[j])
+            squin.rz(angle, qubits[j])
+            squin.depolarize2(0.02, qubits[i], qubits[j])
+    
+    # Reverse qubit order (swap gates)
+    for i in range(n // 2):
+        j = n - i - 1
+        squin.cx(qubits[i], qubits[j])
+        squin.cx(qubits[j], qubits[i])
+        squin.cx(qubits[i], qubits[j])
+    
+    # Atom loss before measurement
+    squin.broadcast.qubit_loss(0.001, qubits)
+    
+    return squin.measure(qubits)
+```
+
+## Low-Level Interface
+
+Advanced users can access low-level gate and noise interfaces:
+
+```python
+from bloqade.squin.gate import _interface as gate
+from bloqade.squin.noise import _interface as noise
+
+@squin.kernel
+def low_level_example():
+    qubits = squin.qalloc(5)
+    
+    # Low-level gate interface (broadcast by default)
+    gate.x(qubits)
+    gate.rx(1.57, qubits)
+    
+    # Low-level noise interface (broadcast by default)
+    noise.depolarize(0.01, qubits)
+```
+
+## Kernel Decorator
+
+All functions using Squin operations must be decorated with `@squin.kernel`:
+
+```python
+from bloqade.squin.groups import kernel
+
+@kernel
+def my_gate_sequence(q):
+    squin.h(q)
+    squin.t(q)
+    squin.h(q)
+```
+
+The `kernel` decorator enables circuit compilation and type checking.

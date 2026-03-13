@@ -1,0 +1,161 @@
+---
+title: Circuit
+description: Compile Bloqade kernels to STIM circuits
+---
+
+## bloqade.stim.Circuit
+
+```python
+class Circuit(stim.Circuit)
+```
+
+Compiles a Bloqade Circuit kernel into a STIM circuit object.
+
+This class inherits from `stim.Circuit` and provides all of STIM's native circuit methods. For the complete API reference of the underlying circuit class, see the [STIM Python API documentation](https://github.com/quantumlib/Stim/blob/main/doc/python_api_reference_vDev.md#stim.Circuit).
+
+### Constructor
+
+```python
+def __init__(kernel: ir.Method)
+```
+
+<ParamField path="kernel" type="ir.Method" required>
+  The Bloqade Circuit kernel to compile into a STIM circuit. The kernel should be decorated with `@stim.main` and contain STIM-compatible operations.
+</ParamField>
+
+### Usage
+
+#### Basic Example
+
+```python
+from bloqade import stim
+
+# Define a kernel
+@stim.main
+def simple_circuit():
+    stim.h(targets=(0,))
+    stim.cx(controls=(0,), targets=(1,))
+    stim.mz(p=0.0, targets=(0, 1))
+
+# Compile to STIM circuit
+circuit = stim.Circuit(simple_circuit)
+
+# Access STIM's native methods
+print(circuit)  # Print STIM program
+print(circuit.num_qubits)  # Number of qubits
+```
+
+#### Sampling Measurements
+
+```python
+from bloqade import stim
+
+@stim.main
+def measurement_circuit():
+    # Prepare Bell state
+    stim.h(targets=(0,))
+    stim.cx(controls=(0,), targets=(1,))
+    
+    # Measure in X basis
+    stim.mx(p=0.0, targets=(0, 1))
+
+# Compile and sample
+circuit = stim.Circuit(measurement_circuit)
+sampler = circuit.compile_sampler()
+samples = sampler.sample(shots=1000)
+
+print(samples.shape)  # (1000, 2)
+```
+
+#### Stabilizer Simulation
+
+```python
+from bloqade import stim
+
+@stim.main
+def stabilizer_circuit():
+    # Create 3-qubit GHZ state
+    stim.h(targets=(0,))
+    stim.cx(controls=(0,), targets=(1,))
+    stim.cx(controls=(1,), targets=(2,))
+    
+    # Measure
+    stim.mz(p=0.0, targets=(0, 1, 2))
+
+circuit = stim.Circuit(stabilizer_circuit)
+
+# Get stabilizer tableau
+tableau = circuit.to_tableau()
+print(tableau)
+```
+
+#### Error Correction with Detectors
+
+```python
+from bloqade import stim
+from bloqade.stim.dialects import auxiliary
+
+@stim.main
+def error_detection():
+    # Initialize qubits
+    stim.h(targets=(0, 1))
+    
+    # Add noise
+    stim.depolarize1(p=0.01, targets=(0, 1))
+    
+    # Measure
+    stim.mz(p=0.0, targets=(0, 1))
+    
+    # Define detector
+    rec0 = stim.rec(-2)  # Second-to-last measurement result
+    rec1 = stim.rec(-1)  # Last measurement result
+    stim.detector(coord=(0, 0), targets=(rec0, rec1))
+
+circuit = stim.Circuit(error_detection)
+
+# Compile detector sampler
+detector_sampler = circuit.compile_detector_sampler()
+detector_samples = detector_sampler.sample(shots=1000)
+```
+
+### STIM Circuit Methods
+
+Since `Circuit` inherits from `stim.Circuit`, you have access to all STIM methods:
+
+#### Compilation Methods
+
+- `compile_sampler()`: Create a sampler for measurement results
+- `compile_detector_sampler()`: Create a sampler for detector results
+- `compile_m2d_converter()`: Convert measurement results to detector results
+- `compile_demultiplexer()`: Split circuit into components
+
+#### Analysis Methods
+
+- `num_qubits`: Number of qubits in the circuit
+- `num_measurements`: Number of measurements
+- `num_detectors`: Number of detectors
+- `num_observables`: Number of logical observables
+- `to_tableau()`: Get the stabilizer tableau
+- `detecting_errors()`: Find error mechanisms that trigger detectors
+
+#### Circuit Manipulation
+
+- `append(other)`: Append another circuit
+- `copy()`: Create a deep copy
+- `clear()`: Remove all operations
+- `flattened()`: Return flattened version
+
+For the complete API, see the [STIM Python API Reference](https://github.com/quantumlib/Stim/blob/main/doc/python_api_reference_vDev.md#stim.Circuit).
+
+### Notes
+
+- The kernel must use STIM-compatible operations from the `bloqade.stim` module
+- Not all quantum operations are supported by STIM (only Clifford operations and certain noise models)
+- The compilation happens automatically when the `Circuit` object is instantiated
+- The resulting circuit is a native STIM circuit and can be used with any STIM tools
+
+### See Also
+
+- [STIM Overview](/api/stim/overview): Introduction to the STIM module
+- [Dialects](/api/stim/dialects): Available STIM operations
+- [STIM Documentation](https://github.com/quantumlib/Stim): Official STIM library documentation

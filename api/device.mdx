@@ -1,0 +1,275 @@
+---
+title: "Device"
+description: "Core device abstractions for Bloqade Circuit"
+---
+
+## AbstractDevice
+
+Abstract base class for devices. Defines the minimum interface for devices.
+
+```python
+class AbstractDevice(abc.ABC, Generic[TaskType])
+```
+
+### Methods
+
+#### task
+
+Creates a remote task for the device.
+
+```python
+def task(
+    self,
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None,
+) -> TaskType
+```
+
+<ParamField path="kernel" type="ir.Method[Params, RetType]" required>
+  The kernel method to execute on the device.
+</ParamField>
+
+<ParamField path="args" type="tuple[Any, ...]" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict[str, Any] | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ResponseField name="return" type="TaskType">
+  A task object that can be used to execute the kernel.
+</ResponseField>
+
+---
+
+## ExpectationDeviceMixin
+
+Mixin class that adds expectation value computation to devices.
+
+```python
+class ExpectationDeviceMixin(AbstractDevice[ExpectTaskType])
+```
+
+### Methods
+
+#### expect
+
+Returns the expectation value of the given observable after running the task.
+
+```python
+def expect(
+    self,
+    kernel: ir.Method[Params, RetType],
+    observable: ir.Method[[RetType], ObsType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None,
+    *,
+    shots: int = 1,
+) -> ObsType
+```
+
+<ParamField path="kernel" type="ir.Method[Params, RetType]" required>
+  The kernel method to execute.
+</ParamField>
+
+<ParamField path="observable" type="ir.Method[[RetType], ObsType]" required>
+  The observable to compute the expectation value for.
+</ParamField>
+
+<ParamField path="args" type="tuple[Any, ...]" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict[str, Any] | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="shots" type="int" default="1">
+  The number of times to run the kernel method.
+</ParamField>
+
+<ResponseField name="return" type="ObsType">
+  The expectation value of the observable.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade import device
+
+# Get expectation value of an observable
+result = device.expect(
+    kernel=my_kernel,
+    observable=my_observable,
+    shots=100
+)
+```
+
+---
+
+## AbstractRemoteDevice
+
+Abstract base class for remote devices.
+
+```python
+class AbstractRemoteDevice(AbstractDevice[RemoteTaskType])
+```
+
+### Methods
+
+#### run
+
+Runs the kernel and returns the result.
+
+```python
+def run(
+    self,
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None,
+    *,
+    shots: int = 1,
+    timeout: float | None = None,
+) -> list[RetType]
+```
+
+<ParamField path="kernel" type="ir.Method[Params, RetType]" required>
+  The kernel method to run.
+</ParamField>
+
+<ParamField path="args" type="tuple[Any, ...]" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict[str, Any] | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="shots" type="int" default="1">
+  The number of times to run the kernel method.
+</ParamField>
+
+<ParamField path="timeout" type="float | None" default="None">
+  Timeout in seconds for the asynchronous execution. If None, wait indefinitely.
+</ParamField>
+
+<ResponseField name="return" type="list[RetType]">
+  The result of the kernel method, if any.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade import remote_device
+
+# Run a kernel synchronously
+results = remote_device.run(
+    kernel=my_kernel,
+    shots=10,
+    timeout=30.0
+)
+```
+
+#### run_async
+
+Runs the kernel asynchronously and returns a Future object.
+
+```python
+def run_async(
+    self,
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None,
+    *,
+    shots: int = 1,
+) -> BatchFuture[RetType]
+```
+
+<ParamField path="kernel" type="ir.Method[Params, RetType]" required>
+  The kernel method to run.
+</ParamField>
+
+<ParamField path="args" type="tuple[Any, ...]" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict[str, Any] | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="shots" type="int" default="1">
+  The number of times to run the kernel method.
+</ParamField>
+
+<ResponseField name="return" type="BatchFuture[RetType]">
+  The Future for all executions of the kernel method.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade import remote_device
+
+# Run a kernel asynchronously
+future = remote_device.run_async(
+    kernel=my_kernel,
+    shots=100
+)
+
+# Do other work...
+
+# Get results when ready
+results = future.result(timeout=60.0)
+```
+
+---
+
+## AbstractSimulatorDevice
+
+Abstract base class for simulator devices.
+
+```python
+class AbstractSimulatorDevice(AbstractDevice[SimulatorTaskType])
+```
+
+### Methods
+
+#### run
+
+Runs the kernel and returns the result.
+
+```python
+def run(
+    self,
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None,
+) -> RetType
+```
+
+<ParamField path="kernel" type="ir.Method[Params, RetType]" required>
+  The kernel method to run.
+</ParamField>
+
+<ParamField path="args" type="tuple[Any, ...]" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict[str, Any] | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ResponseField name="return" type="RetType">
+  The result of the kernel method.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade import simulator_device
+
+# Run a kernel on a simulator
+result = simulator_device.run(kernel=my_kernel)
+```

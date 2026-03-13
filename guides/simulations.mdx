@@ -1,0 +1,514 @@
+---
+title: Running Simulations
+description: Execute quantum circuits on different simulator backends and interpret results
+---
+
+## Overview
+
+Bloqade Circuit provides a unified interface for running quantum circuits on multiple simulator backends. This guide covers how to execute circuits, configure backends, and interpret simulation results.
+
+## Simulation Backends
+
+Bloqade Circuit supports several simulation backends:
+
+<CardGroup cols={2}>
+  <Card title="PyQrack" icon="microchip">
+    High-performance quantum simulator with GPU acceleration support
+  </Card>
+  <Card title="Cirq" icon="google">
+    Google's quantum computing framework with rich simulation capabilities
+  </Card>
+  <Card title="STIM" icon="bolt">
+    Fast stabilizer circuit simulator optimized for quantum error correction
+  </Card>
+  <Card title="QBraid" icon="cloud">
+    Cloud-based quantum computing platform for running on multiple providers
+  </Card>
+</CardGroup>
+
+## PyQrack Simulations
+
+### Stack Memory Simulator
+
+The stack memory simulator is optimized for circuits where the qubit count is known:
+
+```python
+from bloqade import squin
+from bloqade.pyqrack import StackMemorySimulator
+
+@squin.kernel
+def bell_state():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    return squin.broadcast.measure(q)
+
+# Create simulator with minimum qubit count
+sim = StackMemorySimulator(min_qubits=2)
+
+# Run the circuit
+result = sim.run(bell_state)
+print(result)  # [MeasurementResultValue.Zero, MeasurementResultValue.Zero]
+```
+
+<Note>
+The `StackMemorySimulator` requires knowing the total number of qubits upfront. Use `min_qubits` to specify this.
+</Note>
+
+### Dynamic Memory Simulator
+
+For circuits with dynamic qubit allocation:
+
+```python
+from bloqade.pyqrack import DynamicMemorySimulator
+
+@squin.kernel
+def dynamic_allocation():
+    q1 = squin.qalloc(2)
+    squin.h(q1[0])
+    
+    # Allocate more qubits dynamically
+    q2 = squin.qalloc(3)
+    squin.cx(q1[0], q2[2])
+    
+    return squin.broadcast.measure(q1)
+
+sim = DynamicMemorySimulator()
+result = sim.run(dynamic_allocation)
+```
+
+### Getting State Vectors
+
+Retrieve the quantum state after simulation:
+
+```python
+import numpy as np
+
+@squin.kernel
+def superposition():
+    q = squin.qalloc(1)
+    squin.h(q[0])
+
+sim = StackMemorySimulator(min_qubits=1)
+state = sim.state_vector(superposition)
+
+print(f"State: {state}")
+print(f"Probability |0⟩: {abs(state[0])**2:.3f}")
+print(f"Probability |1⟩: {abs(state[1])**2:.3f}")
+```
+
+### Multiple Shots
+
+Run circuits multiple times to collect statistics:
+
+```python
+@squin.kernel
+def measurement_circuit():
+    q = squin.qalloc(1)
+    squin.h(q[0])
+    return squin.measure(q[0])
+
+sim = StackMemorySimulator(min_qubits=1)
+results = sim.multi_run(measurement_circuit, _shots=1000)
+
+# Count outcomes
+from collections import Counter
+counts = Counter(results)
+print(f"Measurement statistics: {counts}")
+```
+
+## QASM2 Simulations
+
+### Basic Execution
+
+```python
+from bloqade import qasm2
+from bloqade.pyqrack import StackMemorySimulator
+
+@qasm2.main
+def ghz_circuit():
+    q = qasm2.qreg(3)
+    c = qasm2.creg(3)
+    
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+    qasm2.cx(q[1], q[2])
+    qasm2.measure(q, c)
+    
+    return c
+
+sim = StackMemorySimulator(min_qubits=3)
+result = sim.run(ghz_circuit)
+print(f"Measurement results: {result}")
+```
+
+### Loading QASM Strings
+
+```python
+import textwrap
+
+qasm_str = textwrap.dedent("""
+OPENQASM 2.0;
+include "qelib1.inc";
+
+qreg q[2];
+creg c[2];
+
+h q[0];
+cx q[0], q[1];
+measure q -> c;
+""")
+
+# Load and run
+main = qasm2.loads(qasm_str, returns="c")
+sim = StackMemorySimulator(min_qubits=2)
+result = sim.run(main)
+```
+
+## Cirq Simulations
+
+### Emitting to Cirq
+
+Convert Bloqade circuits to Cirq circuits:
+
+```python
+import cirq
+from bloqade import squin
+from bloqade.cirq_utils import emit_circuit
+
+@squin.kernel
+def circuit_to_simulate():
+    q = squin.qalloc(3)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    squin.cx(q[1], q[2])
+
+# Convert to Cirq circuit
+cirq_circuit = emit_circuit(circuit_to_simulate)
+print(cirq_circuit)
+
+# Simulate with Cirq
+simulator = cirq.Simulator()
+result = simulator.simulate(cirq_circuit)
+print(f"Final state vector:\n{result.final_state_vector}")
+```
+
+### Custom Qubit Layout
+
+Specify custom qubit positions for Cirq:
+
+```python
+@squin.kernel
+def two_qubit_circuit():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+
+# Use grid qubits
+qubits = [cirq.GridQubit(0, 0), cirq.GridQubit(0, 1)]
+circuit = emit_circuit(two_qubit_circuit, qubits=qubits)
+
+print(f"Circuit qubits: {circuit.all_qubits()}")
+```
+
+### Density Matrix Simulation
+
+Simulate with noise using density matrices:
+
+```python
+import numpy as np
+
+@squin.kernel
+def noisy_circuit():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.depolarize(0.01, q[0])  # Add noise
+    squin.cx(q[0], q[1])
+
+circuit = emit_circuit(noisy_circuit)
+
+# Use density matrix simulator
+simulator = cirq.DensityMatrixSimulator(dtype=np.complex128)
+result = simulator.simulate(circuit)
+
+rho = result.final_density_matrix
+print(f"Density matrix shape: {rho.shape}")
+```
+
+## STIM Simulations
+
+### Stabilizer Circuits
+
+STIM is optimized for Clifford circuits and quantum error correction:
+
+```python
+from bloqade import squin
+from bloqade.stim import Circuit
+
+@squin.kernel
+def stabilizer_circuit():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+
+# Convert to STIM circuit
+stim_circuit = Circuit(stabilizer_circuit)
+print(stim_circuit)
+```
+
+<Tip>
+STIM is extremely fast for stabilizer circuits, making it ideal for simulating large quantum error correction codes.
+</Tip>
+
+## Interpreting Results
+
+### Measurement Results
+
+Measurement results are returned as `MeasurementResultValue` enums:
+
+```python
+from bloqade.pyqrack import MeasurementResultValue
+
+@squin.kernel
+def measure_example():
+    q = squin.qalloc(2)
+    squin.x(q[0])  # Flip first qubit
+    return squin.broadcast.measure(q)
+
+sim = StackMemorySimulator(min_qubits=2)
+result = sim.run(measure_example)
+
+# result is [MeasurementResultValue.One, MeasurementResultValue.Zero]
+for i, val in enumerate(result):
+    if val == MeasurementResultValue.One:
+        print(f"Qubit {i}: measured 1")
+    else:
+        print(f"Qubit {i}: measured 0")
+```
+
+### Converting to Integers
+
+```python
+def result_to_int(measurements):
+    """Convert measurement results to integer."""
+    value = 0
+    for i, m in enumerate(measurements):
+        if m == MeasurementResultValue.One:
+            value += 2 ** i
+    return value
+
+result = sim.run(measure_example)
+print(f"Measured value: {result_to_int(result)}")
+```
+
+### State Vector Analysis
+
+```python
+import numpy as np
+import math
+
+@squin.kernel
+def ghz_state():
+    q = squin.qalloc(3)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    squin.cx(q[1], q[2])
+
+sim = StackMemorySimulator(min_qubits=3)
+state = sim.state_vector(ghz_state)
+
+# Normalize and remove global phase
+norm = math.sqrt(sum(abs(ele) ** 2 for ele in state))
+phase = state[0] / abs(state[0]) if abs(state[0]) > 1e-10 else 1.0
+state_normalized = [ele / (phase * norm) for ele in state]
+
+print("Amplitudes:")
+for i, amp in enumerate(state_normalized):
+    prob = abs(amp) ** 2
+    if prob > 1e-6:
+        print(f"|{i:03b}⟩: {amp:.3f} (prob: {prob:.3f})")
+```
+
+## Simulator Options
+
+### PyQrack Configuration
+
+Configure PyQrack simulator options:
+
+```python
+from bloqade.pyqrack import StackMemorySimulator
+
+sim = StackMemorySimulator(
+    min_qubits=10,
+    options={
+        "isBinaryDecisionTree": False,
+        "isStabilizerHybrid": True,
+        "isTensorNetwork": False,
+    }
+)
+```
+
+<Tip>
+**Stabilizer hybrid mode** (`isStabilizerHybrid=True`) can significantly speed up circuits with many Clifford gates.
+</Tip>
+
+### Performance Tips
+
+<Steps>
+<Step title="Use stabilizer hybrid">
+Enable stabilizer hybrid mode for circuits with Clifford-heavy sections:
+
+```python
+options = {"isStabilizerHybrid": True}
+```
+</Step>
+
+<Step title="Set minimum qubits accurately">
+Specify the exact qubit count to avoid unnecessary memory allocation:
+
+```python
+sim = StackMemorySimulator(min_qubits=exact_count)
+```
+</Step>
+
+<Step title="Fold constants">
+Use constant folding to optimize before simulation:
+
+```python
+from kirin.passes import Fold
+Fold(circuit.dialects)(circuit)
+```
+</Step>
+
+<Step title="Batch simulations">
+Use `multi_run` instead of multiple `run` calls:
+
+```python
+results = sim.multi_run(circuit, _shots=1000)
+```
+</Step>
+</Steps>
+
+## Advanced Simulation Techniques
+
+### Conditional Measurements
+
+```python
+@squin.kernel
+def teleportation():
+    # Create Bell pair
+    bell = squin.qalloc(2)
+    squin.h(bell[0])
+    squin.cx(bell[0], bell[1])
+    
+    # Qubit to teleport
+    msg = squin.qalloc(1)
+    squin.h(msg[0])
+    
+    # Bell measurement
+    squin.cx(msg[0], bell[0])
+    squin.h(msg[0])
+    
+    m1 = squin.measure(msg[0])
+    m2 = squin.measure(bell[0])
+    
+    # Conditional corrections
+    if m2:
+        squin.x(bell[1])
+    if m1:
+        squin.z(bell[1])
+    
+    return squin.measure(bell[1])
+
+sim = StackMemorySimulator(min_qubits=3)
+result = sim.run(teleportation)
+```
+
+### Comparing Fidelities
+
+Compare ideal and noisy simulations:
+
+```python
+import numpy as np
+from scipy.linalg import sqrtm
+
+def fidelity(rho, sigma):
+    """Calculate Uhlmann fidelity between density matrices."""
+    sqrt_rho = sqrtm(rho)
+    intermediate = sqrt_rho @ sigma @ sqrt_rho
+    sqrt_product = sqrtm(intermediate)
+    return np.real(np.trace(sqrt_product)) ** 2
+
+@squin.kernel
+def noisy_ghz():
+    q = squin.qalloc(3)
+    squin.h(q[0])
+    squin.depolarize(0.01, q[0])
+    squin.cx(q[0], q[1])
+    squin.cx(q[1], q[2])
+
+# Simulate with Cirq for density matrices
+noisy_circuit = emit_circuit(noisy_ghz)
+sim = cirq.DensityMatrixSimulator()
+noisy_result = sim.simulate(noisy_circuit)
+
+# Compare with ideal
+@squin.kernel
+def ideal_ghz():
+    q = squin.qalloc(3)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    squin.cx(q[1], q[2])
+
+ideal_circuit = emit_circuit(ideal_ghz)
+ideal_result = sim.simulate(ideal_circuit)
+
+fid = fidelity(ideal_result.final_density_matrix, 
+               noisy_result.final_density_matrix)
+print(f"Fidelity: {fid:.4f}")
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Address analysis fails">
+    If you get an error about unresolved addresses, specify `min_qubits`:
+    
+    ```python
+    sim = StackMemorySimulator(min_qubits=5)
+    ```
+  </Accordion>
+  
+  <Accordion title="Memory errors with large circuits">
+    Use stabilizer hybrid mode or consider using STIM for Clifford circuits:
+    
+    ```python
+    options = {"isStabilizerHybrid": True}
+    sim = StackMemorySimulator(min_qubits=20, options=options)
+    ```
+  </Accordion>
+  
+  <Accordion title="Slow simulation performance">
+    - Fold constants before simulation
+    - Use appropriate backend (STIM for stabilizers)
+    - Enable GPU acceleration if available
+    - Reduce qubit count or circuit depth
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Analysis Tools" icon="microscope" href="/guides/analysis">
+    Learn about fidelity analysis and validation
+  </Card>
+  <Card title="Backend Configuration" icon="gear" href="/guides/backends">
+    Deep dive into backend-specific configuration
+  </Card>
+  <Card title="Writing Circuits" icon="code" href="/guides/writing-circuits">
+    Master circuit composition techniques
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/device">
+    Explore device and simulator APIs
+  </Card>
+</CardGroup>

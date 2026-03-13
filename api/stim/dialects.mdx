@@ -1,0 +1,1065 @@
+---
+title: Dialects
+description: Complete reference for STIM operations organized by dialect
+---
+
+## Overview
+
+Bloqade's STIM module organizes operations into four dialects:
+
+- **Gate**: Quantum gates (Clifford gates, rotation gates, controlled gates)
+- **Collapse**: Measurement and reset operations
+- **Noise**: Error models and noise channels
+- **Auxiliary**: Detectors, observables, and circuit metadata
+
+All operations are available as Python functions in the `bloqade.stim` namespace.
+
+## Gate Dialect
+
+Quantum gates for manipulating qubit states.
+
+### Single-Qubit Clifford Gates
+
+#### x
+
+```python
+def x(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply Pauli X gate.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for Pauli X).
+</ParamField>
+
+```python
+stim.x(targets=(0, 1, 2))
+```
+
+#### y
+
+```python
+def y(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply Pauli Y gate.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for Pauli Y).
+</ParamField>
+
+```python
+stim.y(targets=(0, 1))
+```
+
+#### z
+
+```python
+def z(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply Pauli Z gate.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for Pauli Z).
+</ParamField>
+
+```python
+stim.z(targets=(3,))
+```
+
+#### h
+
+```python
+def h(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply Hadamard gate.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for Hadamard).
+</ParamField>
+
+```python
+stim.h(targets=(0,))  # Superposition
+```
+
+#### s
+
+```python
+def s(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply S gate (phase gate, sqrt(Z)).
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply S† instead of S.
+</ParamField>
+
+```python
+stim.s(targets=(0,))
+stim.s(targets=(1,), dagger=True)  # S†
+```
+
+#### sqrt_x
+
+```python
+def sqrt_x(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply sqrt(X) gate.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply sqrt(X)† instead of sqrt(X).
+</ParamField>
+
+```python
+stim.sqrt_x(targets=(0,))
+```
+
+#### sqrt_y
+
+```python
+def sqrt_y(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply sqrt(Y) gate.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply sqrt(Y)† instead of sqrt(Y).
+</ParamField>
+
+```python
+stim.sqrt_y(targets=(1,))
+```
+
+#### sqrt_z
+
+```python
+def sqrt_z(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply sqrt(Z) gate (same as S gate).
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the gate to.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply sqrt(Z)† instead of sqrt(Z).
+</ParamField>
+
+```python
+stim.sqrt_z(targets=(2,))
+```
+
+#### identity
+
+```python
+def identity(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply identity gate (no operation).
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Has no effect for identity.
+</ParamField>
+
+```python
+stim.identity(targets=(0,))
+```
+
+### Two-Qubit Clifford Gates
+
+#### cx
+
+```python
+def cx(
+    controls: tuple[int, ...],
+    targets: tuple[int, ...],
+    dagger: bool = False
+) -> None
+```
+
+Apply controlled-X (CNOT) gate.
+
+<ParamField path="controls" type="tuple[int, ...]" required>
+  Control qubit indices.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Target qubit indices. Must have the same length as `controls`.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for CNOT).
+</ParamField>
+
+```python
+stim.cx(controls=(0,), targets=(1,))  # Bell state
+stim.cx(controls=(0, 1), targets=(2, 3))  # Multiple CNOTs
+```
+
+#### cy
+
+```python
+def cy(
+    controls: tuple[int, ...],
+    targets: tuple[int, ...],
+    dagger: bool = False
+) -> None
+```
+
+Apply controlled-Y gate.
+
+<ParamField path="controls" type="tuple[int, ...]" required>
+  Control qubit indices.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Target qubit indices. Must have the same length as `controls`.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for CY).
+</ParamField>
+
+```python
+stim.cy(controls=(0,), targets=(1,))
+```
+
+#### cz
+
+```python
+def cz(
+    controls: tuple[int, ...],
+    targets: tuple[int, ...],
+    dagger: bool = False
+) -> None
+```
+
+Apply controlled-Z gate.
+
+<ParamField path="controls" type="tuple[int, ...]" required>
+  Control qubit indices.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Target qubit indices. Must have the same length as `controls`.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for CZ).
+</ParamField>
+
+```python
+stim.cz(controls=(0,), targets=(1,))
+```
+
+#### swap
+
+```python
+def swap(targets: tuple[int, ...], dagger: bool = False) -> None
+```
+
+Apply SWAP gate. Swaps the states of pairs of qubits.
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices. Must be an even number of qubits (pairs to swap).
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint (has no effect for SWAP).
+</ParamField>
+
+```python
+stim.swap(targets=(0, 1))  # Swap qubits 0 and 1
+stim.swap(targets=(0, 1, 2, 3))  # Swap 0↔1 and 2↔3
+```
+
+### Pauli Product Operations
+
+#### spp
+
+```python
+def spp(targets: tuple[PauliString, ...], dagger: bool = False) -> None
+```
+
+Apply stabilizer Pauli product operation.
+
+<ParamField path="targets" type="tuple[PauliString, ...]" required>
+  Pauli string objects created with `pauli_string()`.
+</ParamField>
+
+<ParamField path="dagger" type="bool" default="False">
+  Whether to apply the adjoint.
+</ParamField>
+
+```python
+# Create Pauli strings
+xx = stim.pauli_string(
+    string=("X", "X"),
+    flipped=(False, False),
+    targets=(0, 1)
+)
+stim.spp(targets=(xx,))
+```
+
+## Collapse Dialect
+
+Measurement and reset operations.
+
+### Single-Qubit Measurements
+
+#### mx
+
+```python
+def mx(p: float, targets: tuple[int, ...]) -> None
+```
+
+Measure qubits in the X basis.
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to measure.
+</ParamField>
+
+```python
+stim.mx(p=0.0, targets=(0, 1, 2))
+stim.mx(p=0.01, targets=(3,))  # With 1% error
+```
+
+#### my
+
+```python
+def my(p: float, targets: tuple[int, ...]) -> None
+```
+
+Measure qubits in the Y basis.
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to measure.
+</ParamField>
+
+```python
+stim.my(p=0.0, targets=(0, 1))
+```
+
+#### mz
+
+```python
+def mz(p: float, targets: tuple[int, ...]) -> None
+```
+
+Measure qubits in the Z basis (computational basis).
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to measure.
+</ParamField>
+
+```python
+stim.mz(p=0.0, targets=(0,))
+stim.mz(p=0.001, targets=(1, 2, 3))  # With 0.1% error
+```
+
+### Two-Qubit Measurements
+
+#### mxx
+
+```python
+def mxx(p: float, targets: tuple[int, ...]) -> None
+```
+
+Measure pairs of qubits in the XX basis.
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices (must be even number for pairs).
+</ParamField>
+
+```python
+stim.mxx(p=0.0, targets=(0, 1))  # Measure X⊗X on qubits 0,1
+stim.mxx(p=0.0, targets=(0, 1, 2, 3))  # Two XX measurements
+```
+
+#### myy
+
+```python
+def myy(p: float, targets: tuple[int, ...]) -> None
+```
+
+Measure pairs of qubits in the YY basis.
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices (must be even number for pairs).
+</ParamField>
+
+```python
+stim.myy(p=0.0, targets=(0, 1))
+```
+
+#### mzz
+
+```python
+def mzz(p: float, targets: tuple[int, ...]) -> None
+```
+
+Measure pairs of qubits in the ZZ basis.
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices (must be even number for pairs).
+</ParamField>
+
+```python
+stim.mzz(p=0.0, targets=(0, 1))
+```
+
+### Pauli Product Measurements
+
+#### mpp
+
+```python
+def mpp(p: float, targets: tuple[PauliString, ...]) -> None
+```
+
+Measure arbitrary Pauli products.
+
+<ParamField path="p" type="float" required>
+  Measurement error probability (0.0 for noiseless).
+</ParamField>
+
+<ParamField path="targets" type="tuple[PauliString, ...]" required>
+  Pauli string objects created with `pauli_string()`.
+</ParamField>
+
+```python
+# Measure XYZ on qubits 0,1,2
+xyz = stim.pauli_string(
+    string=("X", "Y", "Z"),
+    flipped=(False, False, False),
+    targets=(0, 1, 2)
+)
+stim.mpp(p=0.0, targets=(xyz,))
+```
+
+### Resets
+
+#### rx
+
+```python
+def rx(targets: tuple[int, ...]) -> None
+```
+
+Reset qubits to |+⟩ state (X eigenstate).
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to reset.
+</ParamField>
+
+```python
+stim.rx(targets=(0, 1))
+```
+
+#### ry
+
+```python
+def ry(targets: tuple[int, ...]) -> None
+```
+
+Reset qubits to |+i⟩ state (Y eigenstate).
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to reset.
+</ParamField>
+
+```python
+stim.ry(targets=(0,))
+```
+
+#### rz
+
+```python
+def rz(targets: tuple[int, ...]) -> None
+```
+
+Reset qubits to |0⟩ state (Z eigenstate).
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to reset.
+</ParamField>
+
+```python
+stim.rz(targets=(0, 1, 2))
+```
+
+## Noise Dialect
+
+Noise models and error channels.
+
+### Depolarizing Noise
+
+#### depolarize1
+
+```python
+def depolarize1(p: float, targets: tuple[int, ...]) -> None
+```
+
+Apply single-qubit depolarizing noise.
+
+<ParamField path="p" type="float" required>
+  Depolarizing probability. The qubit is replaced with a maximally mixed state with probability p.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply noise to.
+</ParamField>
+
+```python
+stim.depolarize1(p=0.001, targets=(0, 1))  # 0.1% depolarizing
+```
+
+#### depolarize2
+
+```python
+def depolarize2(p: float, targets: tuple[int, ...]) -> None
+```
+
+Apply two-qubit depolarizing noise.
+
+<ParamField path="p" type="float" required>
+  Depolarizing probability for qubit pairs.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices (must be even number for pairs).
+</ParamField>
+
+```python
+stim.depolarize2(p=0.01, targets=(0, 1))  # 1% two-qubit depolarizing
+```
+
+### Pauli Channels
+
+#### pauli_channel1
+
+```python
+def pauli_channel1(
+    px: float,
+    py: float,
+    pz: float,
+    targets: tuple[int, ...]
+) -> None
+```
+
+Apply single-qubit Pauli channel.
+
+<ParamField path="px" type="float" required>
+  Probability of X error.
+</ParamField>
+
+<ParamField path="py" type="float" required>
+  Probability of Y error.
+</ParamField>
+
+<ParamField path="pz" type="float" required>
+  Probability of Z error.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices to apply the channel to.
+</ParamField>
+
+```python
+stim.pauli_channel1(
+    px=0.01,
+    py=0.01,
+    pz=0.01,
+    targets=(0, 1)
+)
+```
+
+#### pauli_channel2
+
+```python
+def pauli_channel2(
+    pix: float, piy: float, piz: float,
+    pxi: float, pxx: float, pxy: float, pxz: float,
+    pyi: float, pyx: float, pyy: float, pyz: float,
+    pzi: float, pzx: float, pzy: float, pzz: float,
+    targets: tuple[int, ...]
+) -> None
+```
+
+Apply two-qubit Pauli channel with individual probabilities for each two-qubit Pauli operator.
+
+<ParamField path="pix" type="float" required>
+  Probability of I⊗X error.
+</ParamField>
+
+<ParamField path="piy" type="float" required>
+  Probability of I⊗Y error.
+</ParamField>
+
+<ParamField path="piz" type="float" required>
+  Probability of I⊗Z error.
+</ParamField>
+
+<ParamField path="pxi" type="float" required>
+  Probability of X⊗I error.
+</ParamField>
+
+<ParamField path="pxx" type="float" required>
+  Probability of X⊗X error.
+</ParamField>
+
+<ParamField path="pxy" type="float" required>
+  Probability of X⊗Y error.
+</ParamField>
+
+<ParamField path="pxz" type="float" required>
+  Probability of X⊗Z error.
+</ParamField>
+
+<ParamField path="pyi" type="float" required>
+  Probability of Y⊗I error.
+</ParamField>
+
+<ParamField path="pyx" type="float" required>
+  Probability of Y⊗X error.
+</ParamField>
+
+<ParamField path="pyy" type="float" required>
+  Probability of Y⊗Y error.
+</ParamField>
+
+<ParamField path="pyz" type="float" required>
+  Probability of Y⊗Z error.
+</ParamField>
+
+<ParamField path="pzi" type="float" required>
+  Probability of Z⊗I error.
+</ParamField>
+
+<ParamField path="pzx" type="float" required>
+  Probability of Z⊗X error.
+</ParamField>
+
+<ParamField path="pzy" type="float" required>
+  Probability of Z⊗Y error.
+</ParamField>
+
+<ParamField path="pzz" type="float" required>
+  Probability of Z⊗Z error.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices (must be even number for pairs).
+</ParamField>
+
+```python
+# Apply correlated two-qubit noise
+stim.pauli_channel2(
+    pix=0.001, piy=0.001, piz=0.001,
+    pxi=0.001, pxx=0.002, pxy=0.001, pxz=0.001,
+    pyi=0.001, pyx=0.001, pyy=0.002, pyz=0.001,
+    pzi=0.001, pzx=0.001, pzy=0.001, pzz=0.002,
+    targets=(0, 1)
+)
+```
+
+### Single Pauli Errors
+
+#### x_error
+
+```python
+def x_error(p: float, targets: tuple[int, ...]) -> None
+```
+
+Apply X error with given probability.
+
+<ParamField path="p" type="float" required>
+  Probability of X error.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices.
+</ParamField>
+
+```python
+stim.x_error(p=0.01, targets=(0, 1))
+```
+
+#### y_error
+
+```python
+def y_error(p: float, targets: tuple[int, ...]) -> None
+```
+
+Apply Y error with given probability.
+
+<ParamField path="p" type="float" required>
+  Probability of Y error.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices.
+</ParamField>
+
+```python
+stim.y_error(p=0.01, targets=(2,))
+```
+
+#### z_error
+
+```python
+def z_error(p: float, targets: tuple[int, ...]) -> None
+```
+
+Apply Z error with given probability.
+
+<ParamField path="p" type="float" required>
+  Probability of Z error.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices.
+</ParamField>
+
+```python
+stim.z_error(p=0.01, targets=(0,))
+```
+
+### Atom Loss
+
+#### qubit_loss
+
+```python
+def qubit_loss(probs: tuple[float, ...], targets: tuple[int, ...]) -> None
+```
+
+Model qubit loss (atom loss) with individual loss probabilities.
+
+<ParamField path="probs" type="tuple[float, ...]" required>
+  Loss probability for each qubit. Must have the same length as `targets`.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices.
+</ParamField>
+
+```python
+stim.qubit_loss(
+    probs=(0.01, 0.02, 0.01),
+    targets=(0, 1, 2)
+)
+```
+
+#### correlated_qubit_loss
+
+```python
+def correlated_qubit_loss(
+    probs: tuple[float, ...],
+    targets: tuple[int, ...]
+) -> None
+```
+
+Model correlated qubit loss across multiple qubits.
+
+<ParamField path="probs" type="tuple[float, ...]" required>
+  Loss probabilities for correlated loss events.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices.
+</ParamField>
+
+```python
+stim.correlated_qubit_loss(
+    probs=(0.001,),
+    targets=(0, 1, 2)
+)
+```
+
+## Auxiliary Dialect
+
+Metadata, detectors, and observables for error correction.
+
+### Measurement Records
+
+#### rec
+
+```python
+def rec(id: int) -> RecordResult
+```
+
+Reference a measurement record by index.
+
+<ParamField path="id" type="int" required>
+  Record index. Negative indices reference recent measurements (-1 is the most recent).
+</ParamField>
+
+<ResponseField name="RecordResult" type="RecordResult">
+  A reference to the measurement result that can be used in detectors and observables.
+</ResponseField>
+
+```python
+stim.mz(p=0.0, targets=(0, 1))
+rec0 = stim.rec(-2)  # Result of first measurement
+rec1 = stim.rec(-1)  # Result of second measurement
+```
+
+### Detectors
+
+#### detector
+
+```python
+def detector(
+    coord: tuple[Union[int, float], ...],
+    targets: tuple[RecordResult, ...]
+) -> None
+```
+
+Define a detector for error correction.
+
+<ParamField path="coord" type="tuple[Union[int, float], ...]" required>
+  Spatial/temporal coordinates for the detector.
+</ParamField>
+
+<ParamField path="targets" type="tuple[RecordResult, ...]" required>
+  Measurement records that make up this detector. Created with `rec()`.
+</ParamField>
+
+```python
+stim.mz(p=0.0, targets=(0, 1))
+rec0 = stim.rec(-2)
+rec1 = stim.rec(-1)
+stim.detector(coord=(0, 0), targets=(rec0, rec1))
+```
+
+### Observables
+
+#### observable_include
+
+```python
+def observable_include(
+    idx: int,
+    targets: tuple[RecordResult, ...]
+) -> None
+```
+
+Include measurement records in a logical observable.
+
+<ParamField path="idx" type="int" required>
+  Observable index.
+</ParamField>
+
+<ParamField path="targets" type="tuple[RecordResult, ...]" required>
+  Measurement records to include. Created with `rec()`.
+</ParamField>
+
+```python
+stim.mz(p=0.0, targets=(0, 1, 2))
+rec0 = stim.rec(-3)
+rec1 = stim.rec(-2)
+rec2 = stim.rec(-1)
+stim.observable_include(idx=0, targets=(rec0, rec1, rec2))
+```
+
+### Timing and Coordinates
+
+#### tick
+
+```python
+def tick() -> None
+```
+
+Insert a timing marker in the circuit.
+
+```python
+stim.h(targets=(0,))
+stim.tick()  # End of time step
+stim.cx(controls=(0,), targets=(1,))
+```
+
+#### qubit_coords
+
+```python
+def qubit_coords(
+    coord: tuple[Union[int, float], ...],
+    target: int
+) -> None
+```
+
+Specify spatial coordinates for a qubit.
+
+<ParamField path="coord" type="tuple[Union[int, float], ...]" required>
+  Physical coordinates (e.g., (x, y) or (x, y, z)).
+</ParamField>
+
+<ParamField path="target" type="int" required>
+  Qubit index.
+</ParamField>
+
+```python
+stim.qubit_coords(coord=(0, 0), target=0)
+stim.qubit_coords(coord=(1, 0), target=1)
+stim.qubit_coords(coord=(0, 1), target=2)
+```
+
+### Pauli Strings
+
+#### pauli_string
+
+```python
+def pauli_string(
+    string: tuple[str, ...],
+    flipped: tuple[bool, ...],
+    targets: tuple[int, ...]
+) -> PauliString
+```
+
+Create a Pauli string object for use in `spp()` and `mpp()`.
+
+<ParamField path="string" type="tuple[str, ...]" required>
+  Pauli operators ("X", "Y", "Z", or "I").
+</ParamField>
+
+<ParamField path="flipped" type="tuple[bool, ...]" required>
+  Whether each Pauli operator is negated.
+</ParamField>
+
+<ParamField path="targets" type="tuple[int, ...]" required>
+  Qubit indices for each Pauli operator.
+</ParamField>
+
+<ResponseField name="PauliString" type="PauliString">
+  A Pauli string object that can be used in Pauli product operations.
+</ResponseField>
+
+```python
+# Create XYZ string on qubits 0,1,2
+xyz = stim.pauli_string(
+    string=("X", "Y", "Z"),
+    flipped=(False, False, False),
+    targets=(0, 1, 2)
+)
+
+# Use in measurement
+stim.mpp(p=0.0, targets=(xyz,))
+
+# Create -XXX string (negated)
+neg_xxx = stim.pauli_string(
+    string=("X", "X", "X"),
+    flipped=(True, False, False),  # Negated
+    targets=(0, 1, 2)
+)
+```
+
+## Complete Example
+
+Here's a complete example using operations from all dialects:
+
+```python
+from bloqade import stim
+
+@stim.main
+def error_correction_cycle():
+    # Set qubit coordinates
+    stim.qubit_coords(coord=(0, 0), target=0)
+    stim.qubit_coords(coord=(1, 0), target=1)
+    stim.qubit_coords(coord=(0, 1), target=2)
+    
+    # Initialize qubits
+    stim.rz(targets=(0, 1, 2))
+    
+    # Create entanglement
+    stim.h(targets=(0,))
+    stim.cx(controls=(0,), targets=(1,))
+    stim.cx(controls=(1,), targets=(2,))
+    
+    stim.tick()  # End of gate layer
+    
+    # Apply noise
+    stim.depolarize1(p=0.001, targets=(0, 1, 2))
+    
+    # Measure stabilizers
+    stim.mz(p=0.01, targets=(0, 1, 2))
+    
+    # Define detectors
+    rec0 = stim.rec(-3)
+    rec1 = stim.rec(-2)
+    rec2 = stim.rec(-1)
+    stim.detector(coord=(0, 0, 0), targets=(rec0, rec1))
+    stim.detector(coord=(1, 0, 0), targets=(rec1, rec2))
+    
+    # Define logical observable
+    stim.observable_include(idx=0, targets=(rec0, rec2))
+
+# Compile and simulate
+circuit = stim.Circuit(error_correction_cycle)
+print(circuit)
+
+# Sample detectors
+detector_sampler = circuit.compile_detector_sampler()
+samples = detector_sampler.sample(shots=1000)
+```
+
+## See Also
+
+- [STIM Overview](/api/stim/overview): Introduction to the STIM module
+- [Circuit](/api/stim/circuit): Compile kernels to STIM circuits
+- [STIM Python API](https://github.com/quantumlib/Stim/blob/main/doc/python_api_reference_vDev.md): Official STIM documentation

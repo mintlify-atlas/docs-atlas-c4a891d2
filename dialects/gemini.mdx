@@ -1,0 +1,387 @@
+---
+title: Gemini Dialect
+description: Logical qubit operations for error-corrected quantum computing
+---
+
+## Overview
+
+The Gemini dialect provides high-level operations for programming with logical qubits in error-corrected quantum computing systems. Instead of working directly with physical qubits, Gemini allows you to express algorithms in terms of logical qubits that are protected by quantum error correction codes.
+
+## Key Features
+
+- **Logical qubit abstraction**: Work with error-corrected logical qubits
+- **Automatic encoding**: Initialize logical qubits to arbitrary states
+- **Error correction integration**: Built-in error correction code support
+- **Terminal measurements**: Decode and read out logical qubit measurements
+- **Post-processing**: Majority voting and error correction decoding
+- **High-level programming**: Abstract away physical qubit complexity
+- **Validation**: Built-in checks for logical qubit operations
+
+## Basic Concepts
+
+### Logical vs Physical Qubits
+
+In error-corrected quantum computing:
+
+- **Physical qubits**: The actual quantum hardware (prone to errors)
+- **Logical qubits**: Error-protected qubits encoded across multiple physical qubits
+
+Gemini lets you program at the logical level while error correction codes handle the physical implementation.
+
+```python
+from bloqade.gemini import logical
+
+@logical.kernel
+def logical_circuit():
+    # These are LOGICAL qubits (each backed by multiple physical qubits)
+    q0 = qubit.qalloc()
+    q1 = qubit.qalloc()
+    
+    # Operations on logical qubits
+    # (automatically compiled to physical operations + error correction)
+```
+
+## Logical Qubit Operations
+
+### Initialize Logical Qubits
+
+Initialize logical qubits to arbitrary quantum states:
+
+```python
+import math
+from bloqade.gemini import logical
+from bloqade import qubit
+from kirin.dialects import ilist
+
+@logical.kernel
+def initialize_logical_qubits():
+    # Allocate logical qubits
+    q0 = qubit.qalloc()
+    q1 = qubit.qalloc()
+    q2 = qubit.qalloc()
+    
+    qubits = ilist.IList([q0, q1, q2])
+    
+    # Initialize to |ψ⟩ = cos(θ/2)|0⟩ + e^(iφ) sin(θ/2)|1⟩
+    # Using spherical coordinates (θ, φ, λ)
+    logical.terminal_measure.initialize(
+        theta=math.pi/4,  # Polar angle
+        phi=0.0,          # Azimuthal angle
+        lam=0.0,          # Phase
+        qubits=qubits
+    )
+```
+
+#### Common Initial States
+
+```python
+import math
+from bloqade.gemini import logical
+from bloqade import qubit
+from kirin.dialects import ilist
+
+@logical.kernel
+def common_states():
+    # |0⟩ state (default after allocation)
+    q0 = qubit.qalloc()
+    zero_state = ilist.IList([q0])
+    logical.terminal_measure.initialize(0, 0, 0, zero_state)
+    
+    # |1⟩ state
+    q1 = qubit.qalloc()
+    one_state = ilist.IList([q1])
+    logical.terminal_measure.initialize(math.pi, 0, 0, one_state)
+    
+    # |+⟩ state (equal superposition)
+    q2 = qubit.qalloc()
+    plus_state = ilist.IList([q2])
+    logical.terminal_measure.initialize(math.pi/2, 0, 0, plus_state)
+    
+    # |i⟩ state
+    q3 = qubit.qalloc()
+    i_state = ilist.IList([q3])
+    logical.terminal_measure.initialize(math.pi/2, math.pi/2, 0, i_state)
+```
+
+### Terminal Logical Measurements
+
+Measure logical qubits and obtain decoded results:
+
+```python
+from bloqade.gemini import logical
+from bloqade import qubit
+from kirin.dialects import ilist
+
+@logical.kernel
+def measure_logical_qubits():
+    # Prepare logical qubits
+    q0 = qubit.qalloc()
+    q1 = qubit.qalloc()
+    qubits = ilist.IList([q0, q1])
+    
+    # Initialize
+    logical.terminal_measure.initialize(1.57, 0, 0, qubits)
+    
+    # Perform terminal measurement
+    # Returns nested list: outer list = logical qubits
+    #                      inner lists = physical qubit measurements
+    results = logical.terminal_measure(qubits)
+    
+    return results
+```
+
+The measurement results structure:
+
+```python
+# results: IList[IList[MeasurementResult, NumPhysical], NumLogical]
+# For example, with [[5,3]] encoding (5 physical qubits per logical):
+[
+    [m0, m1, m2, m3, m4],  # Physical measurements for logical qubit 0
+    [m5, m6, m7, m8, m9],  # Physical measurements for logical qubit 1
+]
+```
+
+## Post-Processing
+
+Gemini provides utilities to decode logical measurements:
+
+```python
+from bloqade.gemini import default_post_processing
+
+# Perform circuit
+kernel = logical_circuit.lower()
+results = kernel.run(shots=1000)
+
+# Decode using majority voting
+logical_results = default_post_processing(results)
+
+# logical_results contains the decoded logical qubit values
+for shot in logical_results:
+    print(f"Logical qubit 0: {shot[0]}")
+    print(f"Logical qubit 1: {shot[1]}")
+```
+
+## Error Correction Codes
+
+Gemini supports various quantum error correction codes:
+
+### Surface Code
+
+```python
+from bloqade.gemini import logical
+import math
+
+@logical.kernel
+def surface_code_circuit():
+    """Use surface code for error correction."""
+    # Configure for surface code (specify in runtime or backend config)
+    q = qubit.qalloc()
+    qubits = ilist.IList([q])
+    
+    logical.terminal_measure.initialize(
+        math.pi/4, 0, 0, qubits
+    )
+    
+    # Logical operations...
+    results = logical.terminal_measure(qubits)
+    return results
+```
+
+### Repetition Code
+
+```python
+from bloqade.gemini import logical
+
+@logical.kernel
+def repetition_code_circuit():
+    """Simple bit-flip repetition code."""
+    q = qubit.qalloc()
+    qubits = ilist.IList([q])
+    
+    logical.terminal_measure.initialize(0, 0, 0, qubits)
+    
+    # With [[3,1]] or [[5,1]] repetition code
+    results = logical.terminal_measure(qubits)
+    return results
+```
+
+## Validation and Analysis
+
+Gemini includes validation for logical operations:
+
+```python
+from bloqade.gemini.analysis import logical_validation, measurement_validation
+
+# Validate logical qubit operations
+@logical.kernel
+def my_circuit():
+    q = qubit.qalloc()
+    qubits = ilist.IList([q])
+    logical.terminal_measure.initialize(1.57, 0, 0, qubits)
+    return logical.terminal_measure(qubits)
+
+kernel = my_circuit.lower()
+
+# Check for logical qubit errors
+logical_validation.validate(kernel)
+
+# Check measurement consistency  
+measurement_validation.validate(kernel)
+```
+
+## Complete Example: Logical Bell State
+
+```python
+import math
+from bloqade.gemini import logical, default_post_processing
+from bloqade import qubit
+from kirin.dialects import ilist
+
+@logical.kernel
+def logical_bell_pair():
+    """Create a Bell pair with logical qubits."""
+    # Allocate two logical qubits
+    q0 = qubit.qalloc()
+    q1 = qubit.qalloc()
+    
+    # Initialize first qubit to |+⟩
+    q0_list = ilist.IList([q0])
+    logical.terminal_measure.initialize(
+        theta=math.pi/2,
+        phi=0,
+        lam=0,
+        qubits=q0_list
+    )
+    
+    # Initialize second qubit to |0⟩  
+    q1_list = ilist.IList([q1])
+    logical.terminal_measure.initialize(
+        theta=0,
+        phi=0,
+        lam=0,
+        qubits=q1_list
+    )
+    
+    # Note: Logical two-qubit gates would go here
+    # (requires additional circuit implementation)
+    
+    # Measure both logical qubits
+    both_qubits = ilist.IList([q0, q1])
+    results = logical.terminal_measure(both_qubits)
+    
+    return results
+
+# Execute and decode
+kernel = logical_bell_pair.lower()
+raw_results = kernel.run(shots=100)
+logical_results = default_post_processing(raw_results)
+
+print("Decoded logical measurements:")
+for i, shot in enumerate(logical_results[:10]):  # First 10 shots
+    print(f"Shot {i}: Logical Q0={shot[0]}, Logical Q1={shot[1]}")
+```
+
+## Advanced Usage
+
+### Custom Error Correction Codes
+
+```python
+from bloqade.gemini import logical
+
+# Configure custom code parameters
+@logical.kernel
+def custom_code_circuit():
+    """Use custom error correction parameters."""
+    q = qubit.qalloc()
+    qubits = ilist.IList([q])
+    
+    # Custom code configuration (backend-dependent)
+    # E.g., [[7,1,3]] Steane code, [[5,1,3]] code, etc.
+    logical.terminal_measure.initialize(0, 0, 0, qubits)
+    
+    results = logical.terminal_measure(qubits)
+    return results
+```
+
+### Monitoring Physical Qubits
+
+```python
+from bloqade.gemini.logical.rewrite import qubit_count
+
+# Count physical qubits needed
+kernel = my_logical_circuit.lower()
+num_physical = qubit_count.count_qubits(kernel)
+print(f"Physical qubits required: {num_physical}")
+```
+
+## API Reference
+
+### Initialization
+
+```python
+logical.terminal_measure.initialize(
+    theta: float,    # Polar angle (0 to π)
+    phi: float,      # Azimuthal angle (0 to 2π)
+    lam: float,      # Phase (0 to 2π)
+    qubits: IList[Qubit]
+) -> None
+```
+
+### Terminal Measurement
+
+```python
+logical.terminal_measure(
+    qubits: IList[Qubit, N]
+) -> IList[IList[MeasurementResult, NumPhysical], N]
+```
+
+### Post-Processing
+
+```python
+default_post_processing(
+    results: RawMeasurementResults
+) -> DecodedLogicalResults
+```
+
+## When to Use Gemini
+
+<Check>Use Gemini dialect when you:</Check>
+
+- Need fault-tolerant quantum computing
+- Want to program at the logical qubit level
+- Are implementing error-corrected quantum algorithms
+- Need automatic syndrome extraction and decoding
+- Want to abstract away error correction details
+- Are working with error correction codes (surface, repetition, etc.)
+
+<Warning>
+Gemini requires error correction codes to be configured in your backend. Ensure your hardware or simulator supports the error correction code you plan to use.
+</Warning>
+
+## Limitations
+
+- **Gate set**: Currently supports initialization and measurement primitives
+- **Backend support**: Requires error correction-capable backends
+- **Overhead**: Each logical qubit uses multiple physical qubits
+- **Compilation**: May require significant compilation time for complex codes
+
+## Future Directions
+
+Upcoming features in Gemini:
+
+- Logical gate operations (Logical CX, CZ, etc.)
+- Transversal gate implementations
+- Magic state distillation
+- Fault-tolerant compilation passes
+- Integration with more error correction codes
+
+## Related Dialects
+
+<CardGroup cols={2}>
+  <Card title="SQuIn Dialect" icon="layer-group" href="/dialects/squin">
+    Physical qubit operations with stabilizer circuits
+  </Card>
+  <Card title="Stim Dialect" icon="chart-line" href="/dialects/stim">
+    Error correction at the stabilizer level
+  </Card>
+</CardGroup>

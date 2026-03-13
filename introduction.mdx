@@ -1,0 +1,118 @@
+---
+title: Introduction
+description: Python SDK for neutral atom quantum computing with embedded domain-specific circuit languages
+---
+
+<div style={{ 
+  background: 'linear-gradient(135deg, #f41c7c 0%, #fc7cbc 100%)',
+  borderRadius: '4px',
+  padding: '48px 32px',
+  marginBottom: '32px',
+  color: 'white'
+}}>
+  <h1 style={{ fontSize: '48px', fontWeight: '700', marginBottom: '16px', color: 'white' }}>
+    Bloqade Circuit
+  </h1>
+  <p style={{ fontSize: '20px', opacity: '0.95', color: 'white' }}>
+    Python SDK for neutral atom quantum computing with embedded domain-specific circuit languages
+  </p>
+</div>
+
+## Overview
+
+Bloqade Circuit is a core component of QuEra's Neutral Atom SDK, providing powerful embedded domain-specific languages (eDSLs) for programming neutral atom quantum computers. It abstracts away the complexities of neutral atom quantum computing, allowing you to focus on developing quantum algorithms and compilation strategies.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running with your first quantum circuit in minutes
+  </Card>
+  <Card title="Circuit Dialects" icon="code" href="/dialects/overview">
+    Explore QASM2, STIM, Squin, Native, and Gemini dialects
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/device">
+    Comprehensive API documentation for all modules
+  </Card>
+  <Card title="Guides" icon="compass" href="/guides/writing-circuits">
+    Learn best practices and advanced techniques
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Circuit Dialects" icon="layer-group">
+    Support for QASM2, STIM, Squin, Native, and Gemini circuit representations, each optimized for different use cases
+  </Card>
+  <Card title="Abstract Device Interface" icon="microchip">
+    Unified device and task abstractions for executing quantum circuits on simulators and hardware
+  </Card>
+  <Card title="Multiple Simulator Backends" icon="desktop">
+    Run circuits on PyQrack, Cirq, QBraid, and other popular quantum simulators
+  </Card>
+  <Card title="Circuit Analysis Tools" icon="chart-line">
+    Validate circuits, analyze fidelity, and optimize performance
+  </Card>
+  <Card title="Noise Modeling" icon="wave-pulse">
+    Built-in support for error channels and noise models
+  </Card>
+  <Card title="Compilation Passes" icon="arrows-rotate">
+    Flexible rewrite and optimization passes for circuit transformation
+  </Card>
+</CardGroup>
+
+## Circuit Dialects
+
+Bloqade Circuit provides multiple embedded domain-specific languages, each designed for specific quantum computing workflows:
+
+- **QASM2**: Industry-standard OpenQASM 2.0 dialect with extensions for parallel gates and noise
+- **Squin**: Python-native quantum circuit DSL with rich gate libraries and noise channels
+- **STIM**: Stabilizer circuit simulation optimized for quantum error correction
+- **Native**: Direct neutral atom gate operations for hardware-level control
+- **Gemini**: Logical operations for fault-tolerant quantum computing
+
+## Installation
+
+Get started by installing the package:
+
+<CodeGroup>
+
+```bash uv
+uv add bloqade-circuit
+```
+
+```bash pip
+pip install bloqade-circuit
+```
+
+```bash poetry
+poetry add bloqade-circuit
+```
+
+</CodeGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed installation instructions and dependencies
+  </Card>
+  <Card title="Quickstart Tutorial" icon="play" href="/quickstart">
+    Build your first quantum circuit
+  </Card>
+  <Card title="Core Concepts" icon="graduation-cap" href="/concepts/devices">
+    Learn about devices, tasks, and qubits
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/QuEraComputing/bloqade-circuit">
+    View source code and contribute
+  </Card>
+</CardGroup>
+
+## Community and Support
+
+- **Documentation**: [https://bloqade.quera.com/latest/](https://bloqade.quera.com/latest/)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/QuEraComputing/bloqade-circuit/issues)
+- **License**: Apache License 2.0 with LLVM Exceptions
+
+<Note>
+This project is in early development. APIs and features are subject to change. Contributions and feedback are welcome!
+</Note>

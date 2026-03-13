@@ -1,0 +1,174 @@
+---
+title: Installation
+description: Learn how to install Bloqade Circuit and its dependencies
+---
+
+Bloqade Circuit is the core quantum circuit representation component of QuEra's Bloqade SDK. It provides embedded domain-specific languages (eDSLs) for programming neutral atom quantum computers.
+
+## Requirements
+
+Bloqade Circuit requires **Python 3.10 or higher**.
+
+## Installing Bloqade Circuit
+
+<Steps>
+  <Step title="Install via uv (Recommended)">
+    The recommended way to install Bloqade Circuit is using [uv](https://docs.astral.sh/uv/), a fast Python package installer:
+
+    ```bash
+    uv add bloqade-circuit
+    ```
+  </Step>
+
+  <Step title="Install via pip">
+    You can also install Bloqade Circuit using pip:
+
+    ```bash
+    pip install bloqade-circuit
+    ```
+  </Step>
+
+  <Step title="Install via poetry">
+    If you're using Poetry for dependency management:
+
+    ```bash
+    poetry add bloqade-circuit
+    ```
+  </Step>
+</Steps>
+
+## Optional Dependencies
+
+Bloqade Circuit supports several optional dependency groups for extended functionality:
+
+<CardGroup cols={2}>
+  <Card title="QASM2 Support" icon="code">
+    Install parser support for OpenQASM 2.0:
+    
+    ```bash
+    pip install bloqade-circuit[qasm2]
+    ```
+    
+    Includes the Lark parser for QASM2 parsing.
+  </Card>
+
+  <Card title="Visualization" icon="chart-line">
+    Install visualization and animation tools:
+    
+    ```bash
+    pip install bloqade-circuit[vis]
+    ```
+    
+    Includes matplotlib, tqdm, PyQt5, and ffmpeg for circuit visualization.
+  </Card>
+
+  <Card title="qBraid Integration" icon="atom">
+    Install qBraid SDK integration:
+    
+    ```bash
+    pip install bloqade-circuit[qbraid]
+    ```
+    
+    Enables interoperability with the qBraid platform.
+  </Card>
+
+  <Card title="Cirq Integration" icon="circle-nodes">
+    Install Google Cirq integration:
+    
+    ```bash
+    pip install bloqade-circuit[cirq]
+    ```
+    
+    Includes cirq-core and optimization tools for circuit compilation.
+  </Card>
+
+  <Card title="GPU Acceleration (OpenCL)" icon="microchip">
+    Install PyQrack with OpenCL support:
+    
+    ```bash
+    pip install bloqade-circuit[pyqrack-opencl]
+    ```
+    
+    Enables GPU-accelerated quantum simulation via OpenCL.
+  </Card>
+
+  <Card title="GPU Acceleration (CUDA)" icon="microchip">
+    Install PyQrack with CUDA support:
+    
+    ```bash
+    pip install bloqade-circuit[pyqrack-cuda]
+    ```
+    
+    Enables GPU-accelerated quantum simulation via CUDA.
+  </Card>
+
+  <Card title="Stim Integration" icon="waveform">
+    Install Stim for Clifford circuit simulation:
+    
+    ```bash
+    pip install bloqade-circuit[stim]
+    ```
+    
+    High-performance stabilizer circuit simulator.
+  </Card>
+
+  <Card title="TSim Backend" icon="diagram-project">
+    Install the TSim simulation backend:
+    
+    ```bash
+    pip install bloqade-circuit[tsim]
+    ```
+    
+    Alternative tensor network simulator.
+  </Card>
+</CardGroup>
+
+### Installing Multiple Extensions
+
+You can install multiple optional dependencies at once by separating them with commas:
+
+```bash
+pip install bloqade-circuit[qasm2,vis,cirq]
+```
+
+## Verifying Your Installation
+
+After installation, verify that Bloqade Circuit is installed correctly:
+
+<CodeGroup>
+```python Python
+import bloqade
+from bloqade import qasm2, squin
+
+print("Bloqade Circuit installed successfully!")
+```
+
+```python With PyQrack Backend
+from bloqade import squin
+from bloqade.pyqrack import StackMemorySimulator
+
+print("Bloqade Circuit with PyQrack backend ready!")
+```
+</CodeGroup>
+
+<Note>
+  If you encounter any issues during installation, please check that you're using Python 3.10 or higher and that all system dependencies for optional packages (like Qt for visualization) are installed.
+</Note>
+
+## Development Installation
+
+If you want to contribute to Bloqade Circuit or install from source:
+
+```bash
+git clone https://github.com/QuEraComputing/bloqade-circuit.git
+cd bloqade-circuit
+uv sync --all-extras
+```
+
+<Tip>
+  The development installation includes additional tools like pytest, mypy, black, and ruff for testing and code formatting.
+</Tip>
+
+## Next Steps
+
+Now that you have Bloqade Circuit installed, check out the [Quickstart Guide](/quickstart) to create your first quantum circuit.

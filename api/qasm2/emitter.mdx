@@ -1,0 +1,392 @@
+---
+title: 'Emitter'
+description: 'Convert Bloqade kernels to OpenQASM 2.0'
+---
+
+## Overview
+
+The `bloqade.qasm2.emit` module provides functionality for converting Bloqade kernel IR to OpenQASM 2.0 code. The emitter transforms Bloqade's internal representation into QASM2 AST nodes that can be serialized to standard QASM2 text format.
+
+## QASM2 Target
+
+### QASM2 Class
+
+```python
+class QASM2:
+    """QASM2 target for Bloqade kernels.
+    
+    Accepts a Bloqade kernel and produces an AST that you can then 
+    obtain a string for printing or saving as a file.
+    """
+    
+    def __init__(
+        self,
+        qelib1: bool = True,
+        allow_parallel: bool = False,
+        allow_global: bool = False,
+        custom_gate: bool = True,
+        unroll_ifs: bool = True,
+        allow_noise: bool = True,
+    ) -> None:
+        """Initialize the QASM2 target."""
+```
+
+<ParamField path="qelib1" type="bool" default="True">
+  Include the `include "qelib1.inc"` line in the resulting QASM2 AST that's submitted to qBraid.
+</ParamField>
+
+<ParamField path="allow_parallel" type="bool" default="False">
+  Allow parallel gate in the resulting QASM2 AST. If False and the input kernel uses parallel gates, they will be rewritten into UOP gates.
+</ParamField>
+
+<ParamField path="allow_global" type="bool" default="False">
+  Allow global gate in the resulting QASM2 AST. If False and the input kernel uses global gates, they will be rewritten into parallel gates. If both `allow_parallel` and `allow_global` are False, the input kernel will be rewritten to use UOP gates.
+</ParamField>
+
+<ParamField path="custom_gate" type="bool" default="True">
+  Include custom gate definitions in the resulting QASM2 AST. If False, all `qasm2.gate` definitions will be inlined.
+</ParamField>
+
+<ParamField path="unroll_ifs" type="bool" default="True">
+  Unrolls if statements with multiple QASM2 statements in the body to produce valid QASM2 output, which only allows a single operation in an if body.
+</ParamField>
+
+<ParamField path="allow_noise" type="bool" default="True">
+  Allow noise dialect operations in the resulting QASM2 AST.
+</ParamField>
+
+**Example:**
+
+```python
+from bloqade.qasm2.emit import QASM2
+from bloqade import qasm2
+
+# Create emitter with default settings
+emitter = QASM2()
+
+# Or customize the emitter
+emitter = QASM2(
+    qelib1=True,
+    allow_parallel=False,
+    custom_gate=True,
+    unroll_ifs=True
+)
+```
+
+### emit
+
+```python
+def emit(self, entry: ir.Method) -> ast.MainProgram
+```
+
+Emit a QASM2 AST from a Bloqade kernel.
+
+<ParamField path="entry" type="ir.Method" required>
+  The Bloqade kernel to convert to QASM2 AST. The entry method should not have arguments.
+</ParamField>
+
+<ResponseField name="return" type="ast.MainProgram">
+  A QASM2 AST object representing the compiled program.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade.qasm2.emit import QASM2
+from bloqade import qasm2
+
+# Create a kernel
+@qasm2.kernel
+def bell_state():
+    q = qasm2.qreg(2)
+    c = qasm2.creg(2)
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+    qasm2.measure(q, c)
+
+# Emit to AST
+emitter = QASM2()
+ast = emitter.emit(bell_state)
+```
+
+### emit_str
+
+```python
+def emit_str(self, entry: ir.Method) -> str
+```
+
+Emit a QASM2 string from a Bloqade kernel.
+
+<ParamField path="entry" type="ir.Method" required>
+  The Bloqade kernel to convert to QASM2 string.
+</ParamField>
+
+<ResponseField name="return" type="str">
+  A string with the QASM2 representation of the kernel.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade.qasm2.emit import QASM2
+
+emitter = QASM2()
+qasm_code = emitter.emit_str(bell_state)
+print(qasm_code)
+```
+
+**Output:**
+
+```qasm
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0], q[1];
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+```
+
+## Emitter Base Classes
+
+### EmitQASM2Base
+
+```python
+@dataclass
+class EmitQASM2Base(EmitABC[EmitQASM2Frame[StmtType], ast.Node | None], ABC):
+    """Base class for QASM2 emitters."""
+    
+    void = None
+    prefix: str = field(default="", kw_only=True)
+    prefix_if_none: str = field(default="var_", kw_only=True)
+    
+    output: EmitNode | None = field(init=False)
+    ssa_id: idtable.IdTable[ir.SSAValue] = field(init=False)
+```
+
+Base class for implementing QASM2 emitters. Provides common functionality for converting Bloqade IR statements to QASM2 AST nodes.
+
+<ParamField path="prefix" type="str" default="">
+  Prefix for generated variable names.
+</ParamField>
+
+<ParamField path="prefix_if_none" type="str" default="var_">
+  Prefix to use when no explicit name is available.
+</ParamField>
+
+#### Methods
+
+**initialize**
+
+```python
+def initialize(self) -> Self
+```
+
+Initialize the emitter state. Must be called before running the emitter.
+
+**emit_block**
+
+```python
+def emit_block(
+    self,
+    frame: EmitQASM2Frame,
+    block: ir.Block
+) -> ast.Node | None
+```
+
+Emit a block of statements.
+
+**assert_node**
+
+```python
+def assert_node(self, typ: type[A], node: ast.Node | None) -> A
+```
+
+Assert that a node is of a specific type and return it.
+
+### EmitQASM2Frame
+
+```python
+@dataclass
+class EmitQASM2Frame(EmitFrame[ast.Node | None]):
+    """Frame for tracking emission state."""
+    
+    body: list[StmtType] = field(default_factory=list)
+    worklist: WorkList[interp.Successor] = field(default_factory=WorkList)
+    block_ref: dict[ir.Block, ast.Node | None] = field(default_factory=dict)
+    _indent: int = 0
+```
+
+Frame object that maintains state during emission, including the list of emitted statements and variable mappings.
+
+## Specialized Emitters
+
+### EmitQASM2Main
+
+Emitter for main program code (defined in `bloqade.qasm2.emit.main`). Handles the conversion of the main kernel function into a QASM2 program with register declarations and operations.
+
+### EmitQASM2Gate
+
+Emitter for gate definitions (defined in `bloqade.qasm2.emit.gate`). Handles the conversion of custom gate definitions into QASM2 gate declarations.
+
+## Compilation Pipeline
+
+The QASM2 emitter applies several passes to transform the kernel:
+
+1. **QASM2Fold**: Constant folding and simplification
+2. **GlobalToParallel**: Convert global operations to parallel (if `allow_global=False`)
+3. **ParallelToUOp**: Convert parallel operations to unit operations (if `allow_parallel=False`)
+4. **QASM2Validation**: Validate the kernel for QASM2 compatibility
+5. **Py2QASM**: Convert Python-specific constructs to QASM2
+6. **Emission**: Generate AST from validated IR
+
+## Example Usage
+
+### Basic Emission
+
+```python
+from bloqade import qasm2
+from bloqade.qasm2.emit import QASM2
+
+# Define a kernel
+@qasm2.kernel
+def ghz_state(n: int = 3):
+    q = qasm2.qreg(n)
+    c = qasm2.creg(n)
+    
+    # Create GHZ state
+    qasm2.h(q[0])
+    for i in range(n - 1):
+        qasm2.cx(q[i], q[i + 1])
+    
+    qasm2.measure(q, c)
+
+# Emit to string
+emitter = QASM2()
+qasm_code = emitter.emit_str(ghz_state)
+print(qasm_code)
+```
+
+### Custom Gate Definitions
+
+```python
+from bloqade import qasm2
+from bloqade.qasm2.emit import QASM2
+
+@qasm2.gate
+def bell_gate(q0, q1):
+    qasm2.h(q0)
+    qasm2.cx(q0, q1)
+
+@qasm2.kernel
+def main():
+    q = qasm2.qreg(2)
+    bell_gate(q[0], q[1])
+
+# Emit with custom gates
+emitter = QASM2(custom_gate=True)
+qasm_code = emitter.emit_str(main)
+
+# Or inline gates
+emitter_inline = QASM2(custom_gate=False)
+qasm_code_inline = emitter_inline.emit_str(main)
+```
+
+### Parallel Operations
+
+```python
+from bloqade import qasm2
+from bloqade.qasm2.emit import QASM2
+
+@qasm2.kernel
+def parallel_hadamard():
+    q = qasm2.qreg(5)
+    # Apply Hadamard to all qubits
+    for i in range(5):
+        qasm2.h(q[i])
+
+# Allow parallel syntax (non-standard QASM2)
+emitter_parallel = QASM2(allow_parallel=True)
+
+# Or expand to standard gates
+emitter_standard = QASM2(allow_parallel=False)
+qasm_code = emitter_standard.emit_str(parallel_hadamard)
+```
+
+### Handling Noise
+
+```python
+from bloqade import qasm2
+from bloqade.qasm2.emit import QASM2
+from bloqade.qasm2.dialects import noise
+
+# Emit with noise support
+emitter = QASM2(allow_noise=True)
+
+# Or disable noise operations
+emitter_no_noise = QASM2(allow_noise=False)
+```
+
+## Error Handling
+
+The emitter performs validation and will raise errors for invalid kernels:
+
+```python
+from bloqade.qasm2.emit import QASM2
+
+try:
+    emitter = QASM2()
+    qasm_code = emitter.emit_str(invalid_kernel)
+except Exception as e:
+    print(f"Emission error: {e}")
+```
+
+Common issues:
+- Entry method has arguments (should have none)
+- Invalid dialect operations for target configuration
+- Type mismatches
+- Unresolved references
+
+## Method Tables
+
+The emitter uses method tables to handle different dialect operations. Each dialect registers its emission behavior:
+
+```python
+@dialect.register(key="emit.qasm2.gate")
+class MyDialectEmitter(interp.MethodTable):
+    
+    @interp.impl(MyOperation)
+    def emit_my_op(self, emit, frame, stmt):
+        # Convert stmt to QASM2 AST
+        frame.body.append(ast.MyQASMNode(...))
+        return ()
+```
+
+## Integration with Parser
+
+The emitter produces AST nodes compatible with the parser:
+
+```python
+from bloqade.qasm2 import parse
+from bloqade.qasm2.emit import QASM2
+
+# Emit from kernel
+emitter = QASM2()
+ast = emitter.emit(kernel)
+
+# Pretty print
+parse.pprint(ast)
+
+# Or convert to string
+qasm_str = emitter.emit_str(kernel)
+
+# Can be parsed back
+parsed_ast = parse.loads(qasm_str)
+```
+
+## See Also
+
+- [Parser](/api/qasm2/parser): Parse QASM2 code
+- [Dialects](/api/qasm2/dialects): QASM2 dialect system
+- [Overview](/api/qasm2/overview): QASM2 module overview

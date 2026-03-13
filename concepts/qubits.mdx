@@ -1,0 +1,336 @@
+---
+title: "Qubits"
+description: "Working with qubits in Bloqade Circuit"
+---
+
+## Overview
+
+Qubits are the fundamental quantum objects in Bloqade Circuit. They represent quantum states that can be manipulated with gates, measured, and combined to build quantum algorithms.
+
+## Qubit Types
+
+### Base Qubit Class
+
+The abstract base class for all qubits:
+
+```python
+class Qubit(ABC):
+    """Runtime representation of a qubit.
+    
+    Note:
+        This is the base class of more specific qubit types, such as
+        a reference to a piece of quantum register in some quantum register
+        dialects.
+    """
+    pass
+```
+
+In the Kirin type system:
+
+```python
+QubitType = types.PyClass(Qubit)
+```
+
+### MeasurementResult
+
+Measurement outcomes are represented by the `MeasurementResult` type, which can represent:
+- Measured value of 0
+- Measured value of 1  
+- Atom loss (in neutral atom systems)
+
+## Qubit Operations
+
+### Allocation
+
+Create new qubits using the allocation functions:
+
+```python
+from bloqade import qubit
+
+# Allocate a single qubit
+@qubit.kernel
+def single_qubit():
+    q = qubit.new()
+    return q
+
+# Allocate multiple qubits
+@qubit.kernel
+def multi_qubit():
+    qubits = qubit.qalloc(5)  # Allocate 5 qubits
+    return qubits
+```
+
+**Function signatures:**
+
+```python
+def new() -> Qubit:
+    """Create a new qubit.
+    
+    Returns:
+        Qubit: A new qubit.
+    """
+
+def qalloc(n_qubits: int) -> IList[Qubit, Any]:
+    """Allocate a new list of qubits.
+    
+    Args:
+        n_qubits(int): The number of qubits to create.
+        
+    Returns:
+        (IList[Qubit, n_qubits]) A list of qubits.
+    """
+```
+
+### Measurement
+
+Measure qubits to observe their quantum state:
+
+```python
+# Measure a single qubit
+def measure(qubit: Qubit) -> MeasurementResult:
+    """Measure a qubit.
+    
+    Args:
+        qubit (Qubit): The qubit to measure.
+        
+    Returns:
+        MeasurementResult: The result of the measurement.
+            A MeasurementResult can represent both 0 and 1, but also atoms that are lost.
+    """
+
+# Measure multiple qubits
+def measure(qubits: IList[Qubit, N]) -> IList[MeasurementResult, N]:
+    """Measure a list of qubits.
+    
+    Args:
+        qubits (IList[Qubit, N]): The list of qubits to measure.
+        
+    Returns:
+        IList[MeasurementResult, N]: The list containing the results of the measurements.
+    """
+```
+
+**Usage example:**
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def measure_bell_state():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    
+    # Measure all qubits
+    results = squin.broadcast.measure(q)
+    return results
+```
+
+### Reset
+
+Reset qubits to the zero state:
+
+```python
+def reset(qubit: Qubit) -> None:
+    """Reset a qubit to the zero state.
+    
+    Args:
+        qubit (Qubit): The qubit to reset.
+    """
+
+def reset(qubits: IList[Qubit, Any]) -> None:
+    """Reset a list of qubits to the zero state.
+    
+    Args:
+        qubits (IList[Qubit, Any]): The list of qubits to reset.
+    """
+```
+
+### Analyzing Measurement Results
+
+Check the value of measurement results:
+
+```python
+def is_zero(measurement: MeasurementResult) -> bool:
+    """Check if the measurement result is equivalent to measuring the zero state.
+    
+    Args:
+        measurement (MeasurementResult): The measurement result to check.
+    Returns:
+        bool: True if the measurement result is equivalent to measuring the zero state.
+    """
+
+def is_one(measurement: MeasurementResult) -> bool:
+    """Check if the measurement result is equivalent to measuring the one state.
+    
+    Args:
+        measurement (MeasurementResult): The measurement result to check.
+    Returns:
+        bool: True if the measurement result is equivalent to measuring the one state.
+    """
+
+def is_lost(measurement: MeasurementResult) -> bool:
+    """Check if the measurement result indicates atom loss.
+    
+    Args:
+        measurement (MeasurementResult): The measurement result to check.
+    Returns:
+        bool: True if the measurement result indicates atom loss.
+    """
+```
+
+**Usage example:**
+
+```python
+@squin.kernel
+def conditional_circuit():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    
+    result = squin.qubit.measure(q[0])
+    
+    if squin.qubit.is_one(result):
+        squin.x(q[1])  # Apply X if first qubit measured to |1⟩
+    
+    return squin.broadcast.measure(q)
+```
+
+## Qubit Identifiers
+
+Every qubit and measurement has a unique global identifier:
+
+```python
+def get_qubit_id(qubit: Qubit) -> int:
+    """Get the global, unique ID of the qubit.
+    
+    Args:
+        qubit (Qubit): The qubit of which you want the ID.
+        
+    Returns:
+        qubit_id (int): The global, unique ID of the qubit.
+    """
+
+def get_measurement_id(measurement: MeasurementResult) -> int:
+    """Get the global, unique ID of the measurement result.
+    
+    Args:
+        measurement (MeasurementResult): The previously taken measurement.
+    Returns:
+        measurement_id (int): The global, unique ID of the measurement.
+    """
+```
+
+These identifiers are useful for:
+- Debugging and tracing quantum operations
+- Correlating measurements across different parts of a circuit
+- Post-selection and error mitigation
+
+**Example:**
+
+```python
+@squin.kernel
+def track_qubits():
+    q = squin.qalloc(3)
+    
+    # Get qubit IDs
+    ids = squin.broadcast.get_qubit_id(q)
+    
+    # Measure qubits
+    results = squin.broadcast.measure(q)
+    
+    # Get measurement IDs
+    meas_ids = squin.broadcast.get_measurement_id(results)
+    
+    return (ids, meas_ids)
+```
+
+## Broadcast vs Simple Operations
+
+Bloqade provides two interfaces for qubit operations:
+
+<CodeGroup>
+```python Simple (single qubit)
+from bloqade import squin
+
+@squin.kernel
+def single():
+    q = squin.qubit.new()
+    result = squin.qubit.measure(q)
+    return squin.qubit.is_zero(result)
+```
+
+```python Broadcast (multiple qubits)
+from bloqade import squin
+
+@squin.kernel  
+def broadcast():
+    q = squin.qalloc(3)
+    results = squin.broadcast.measure(q)
+    return squin.broadcast.is_zero(results)
+```
+</CodeGroup>
+
+<Note>
+  The `simple` functions work on individual qubits, while `broadcast` functions operate on lists of qubits in parallel.
+</Note>
+
+## Working with Lists
+
+Qubits are often managed as typed lists:
+
+```python
+from kirin.dialects import ilist
+from bloqade import squin
+
+@squin.kernel
+def list_operations():
+    # Allocate list of qubits
+    q = squin.qalloc(5)
+    
+    # Index into list
+    first = q[0]
+    last = q[4]
+    
+    # Slice lists
+    first_three = q[:3]
+    
+    # Map operations over lists
+    def apply_h(qubit):
+        squin.h(qubit)
+        return squin.qubit.measure(qubit)
+    
+    results = ilist.map(apply_h, q)
+    return results
+```
+
+## Implementation Details
+
+Qubit operations are defined as IR statements in the dialect system:
+
+```python
+@statement(dialect=dialect)
+class New(ir.Statement):
+    result: ir.ResultValue = info.result(QubitType)
+
+@statement(dialect=dialect)
+class Measure(ir.Statement):
+    qubits: ir.SSAValue = info.argument(IListType[QubitType, Len])
+    result: ir.ResultValue = info.result(IListType[MeasurementResultType, Len])
+
+@statement(dialect=dialect)
+class Reset(ir.Statement):
+    qubits: ir.SSAValue = info.argument(IListType[QubitType, types.Any])
+```
+
+These statements are lowered to target-specific implementations during compilation.
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Devices" icon="microchip" href="/concepts/devices">
+    Learn how to execute qubit operations on devices
+  </Card>
+  <Card title="Circuits" icon="diagram-project" href="/concepts/circuits">
+    Understand how qubits are represented in circuits
+  </Card>
+</CardGroup>

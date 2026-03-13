@@ -1,0 +1,112 @@
+---
+title: Circuit Dialects Overview
+description: Understanding the different circuit dialects available in Bloqade
+---
+
+## What are Circuit Dialects?
+
+Bloqade supports multiple circuit dialects, each optimized for different quantum computing use cases and hardware backends. A dialect defines the language and operations available for expressing quantum circuits.
+
+## Available Dialects
+
+Bloqade provides five main circuit dialects:
+
+<CardGroup cols={2}>
+  <Card title="QASM2" icon="code" href="/dialects/qasm2">
+    OpenQASM 2.0 support for industry-standard quantum circuit representation
+  </Card>
+  <Card title="SQuIn" icon="layer-group" href="/dialects/squin">
+    Stabilizer Quantum Instruction set for efficient simulation and analysis
+  </Card>
+  <Card title="Stim" icon="chart-line" href="/dialects/stim">
+    Optimized for quantum error correction and stabilizer circuits
+  </Card>
+  <Card title="Native" icon="microchip" href="/dialects/native">
+    Hardware-native gates for neutral atom quantum computers
+  </Card>
+  <Card title="Gemini" icon="diamond" href="/dialects/gemini">
+    Logical qubit operations for error-corrected quantum computing
+  </Card>
+</CardGroup>
+
+## Choosing a Dialect
+
+### QASM2
+
+Use QASM2 when:
+- Interfacing with existing QASM code from other quantum frameworks
+- Needing a standardized circuit representation
+- Working with universal gate sets (Clifford + T, rotations)
+- Importing circuits from Qiskit or other QASM-compatible tools
+
+### SQuIn
+
+Use SQuIn when:
+- Building stabilizer circuits (Clifford gates)
+- Incorporating noise models and fidelity analysis
+- Need efficient simulation of stabilizer states
+- Working with measurements and conditional operations
+
+### Stim
+
+Use Stim when:
+- Designing quantum error correction codes
+- Working with detector and observable annotations
+- Need fast stabilizer circuit simulation
+- Building fault-tolerant quantum circuits
+
+### Native
+
+Use Native when:
+- Programming neutral atom quantum computers directly
+- Optimizing for hardware-native gate implementations
+- Need minimal compilation overhead
+- Working with analog quantum operations
+
+### Gemini
+
+Use Gemini when:
+- Working with logical qubits in error-corrected architectures
+- Need to abstract away physical qubit details
+- Building high-level quantum algorithms for fault-tolerant systems
+- Designing quantum error correction experiments
+
+## Interoperability
+
+Bloqade provides conversion passes between dialects:
+
+```python
+from bloqade import qasm2, squin, stim
+
+# QASM2 to SQuIn conversion
+qasm_kernel = qasm2.loads(qasm_string)
+squin_converted = squin.passes.qasm2_to_squin(qasm_kernel)
+
+# SQuIn to Stim conversion
+stim_circuit = stim.Circuit(squin_kernel)
+```
+
+## Common Features
+
+All dialects support:
+- **Type safety**: Static type checking at compile time
+- **Composability**: Build complex circuits from simple components
+- **Analysis**: Extract circuit properties and statistics
+- **Emission**: Generate executable code for simulators or hardware
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="QASM2 Reference" icon="book" href="/dialects/qasm2">
+    Learn about QASM2 gates and operations
+  </Card>
+  <Card title="SQuIn Reference" icon="book" href="/dialects/squin">
+    Explore stabilizer operations
+  </Card>
+  <Card title="Stim Reference" icon="book" href="/dialects/stim">
+    Work with error correction circuits
+  </Card>
+  <Card title="Native Reference" icon="book" href="/dialects/native">
+    Use hardware-native operations
+  </Card>
+</CardGroup>

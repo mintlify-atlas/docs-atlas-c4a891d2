@@ -1,0 +1,402 @@
+---
+title: Native Dialect
+description: Hardware-native gates for neutral atom quantum computers
+---
+
+## Overview
+
+The Native dialect provides hardware-native gate operations optimized for neutral atom quantum computers and other analog quantum platforms. This dialect offers minimal compilation overhead by directly expressing operations in the native gate set of the hardware, making it ideal for performance-critical applications.
+
+## Key Features
+
+- **Hardware-native gates**: Direct mapping to physical operations
+- **Clifford operations**: H, S, X, Y, Z, and square root gates
+- **Rotation gates**: RX, RY, RZ for arbitrary single-qubit rotations
+- **Universal gates**: U3 and PhasedXZ for complete single-qubit control
+- **Two-qubit gates**: CX, CY, CZ controlled operations
+- **Broadcast operations**: Apply gates to multiple qubits simultaneously
+- **Minimal overhead**: Direct compilation to hardware instructions
+
+## Basic Usage
+
+### Single-Qubit Gates
+
+```python
+from bloqade import native, qubit
+
+@native.kernel
+def single_qubit_circuit():
+    q = qubit.qalloc()
+    
+    # Pauli gates
+    native.x(q)  # Pauli-X
+    native.y(q)  # Pauli-Y
+    native.z(q)  # Pauli-Z
+    
+    # Hadamard
+    native.h(q)
+    
+    # Phase gates
+    native.s(q)      # S gate
+    native.s_dag(q)  # S dagger
+    native.t(q)      # T gate (non-Clifford)
+    
+    # Square root gates  
+    native.sqrt_x(q)
+    native.sqrt_y(q)
+    native.sqrt_x_adj(q)  # √X†
+    native.sqrt_y_adj(q)  # √Y†
+```
+
+### Rotation Gates
+
+```python
+import math
+from bloqade import native, qubit
+
+@native.kernel
+def rotation_circuit():
+    q = qubit.qalloc()
+    
+    # Single-axis rotations
+    native.rx(math.pi/4, q)  # Rotate π/4 around X
+    native.ry(math.pi/2, q)  # Rotate π/2 around Y  
+    native.rz(math.pi, q)    # Rotate π around Z
+    
+    # Phase shift on |1⟩ state
+    native.shift(math.pi/8, q)
+```
+
+### Universal Single-Qubit Gates
+
+#### U3 Gate
+
+The U3 gate provides universal single-qubit control through Euler angle decomposition:
+
+```python
+import math
+from bloqade import native, qubit
+
+@native.kernel
+def u3_example():
+    q = qubit.qalloc()
+    
+    # U3(θ, φ, λ) = Rz(φ) Ry(θ) Rz(λ)
+    native.u3(
+        theta=math.pi/2,  # Y rotation angle
+        phi=0.0,          # First Z rotation
+        lam=math.pi,      # Second Z rotation
+        qubit=q
+    )
+```
+
+#### PhasedXZ Gate
+
+The PhasedXZ gate combines X and Z rotations with a phase offset:
+
+```python
+import math
+from bloqade import native, qubit
+
+@native.kernel
+def phased_xz_example():
+    q = qubit.qalloc()
+    
+    # PhasedXZ gate: efficient for neutral atoms
+    native.phased_xz(
+        x_rad=1.5,            # X rotation angle (radians)
+        z_rad=0.5,            # Z rotation angle (radians)
+        axis_phase_rad=0.2,   # Phase of rotation axis in XY plane
+        qubit=q
+    )
+```
+
+<Info>
+The PhasedXZ gate is particularly efficient on neutral atom hardware as it can often be implemented with a single laser pulse.
+</Info>
+
+### Two-Qubit Gates
+
+```python
+from bloqade import native, qubit
+
+@native.kernel
+def two_qubit_circuit():
+    control = qubit.qalloc()
+    target = qubit.qalloc()
+    
+    # Controlled Pauli gates
+    native.cx(control, target)  # CNOT (Controlled-X)
+    native.cy(control, target)  # Controlled-Y
+    native.cz(control, target)  # Controlled-Z (native for atoms)
+```
+
+<Tip>
+For neutral atom systems, CZ gates are typically native operations implemented through Rydberg blockade, while CX gates require additional single-qubit rotations.
+</Tip>
+
+## Broadcast Operations
+
+Apply gates to multiple qubits simultaneously for improved performance:
+
+```python
+from bloqade import native, qubit
+from kirin.dialects import ilist
+
+@native.kernel
+def broadcast_example():
+    # Allocate multiple qubits
+    qubits = [qubit.qalloc() for _ in range(5)]
+    qubit_list = ilist.IList(qubits)
+    
+    # Apply Hadamard to all qubits at once
+    native.broadcast.h(qubit_list)
+    
+    # Apply rotation to all qubits
+    native.broadcast.rx(1.57, qubit_list)
+    
+    # Apply phase gate to all
+    native.broadcast.s(qubit_list)
+```
+
+### Broadcast Two-Qubit Operations
+
+```python
+from bloqade import native, qubit
+from kirin.dialects import ilist
+
+@native.kernel
+def broadcast_two_qubit():
+    # Two sets of qubits
+    controls = ilist.IList([qubit.qalloc() for _ in range(3)])
+    targets = ilist.IList([qubit.qalloc() for _ in range(3)])
+    
+    # Apply CZ between corresponding pairs
+    native.broadcast.cz(controls, targets)
+```
+
+## Compilation Advantages
+
+The Native dialect minimizes compilation overhead:
+
+```python
+from bloqade import native, qasm2, qubit
+import time
+
+# Native dialect - direct hardware mapping
+@native.kernel
+def native_circuit():
+    q = qubit.qalloc()
+    native.phased_xz(1.5, 0.5, 0.2, q)  # Single hardware instruction
+    return q
+
+# QASM2 - requires decomposition
+@qasm2.gate
+def qasm_circuit():
+    q = qasm2.qreg(1)
+    qasm2.u3(q[0], 1.5, 0.5, 0.2)  # Needs compilation to native gates
+    return q
+
+# Native compilation is typically faster
+kernel_native = native_circuit.lower()
+kernel_qasm = qasm_circuit.lower()
+```
+
+## Working with Qubits
+
+### Qubit Allocation and Management
+
+```python
+from bloqade import native, qubit
+
+@native.kernel
+def qubit_management():
+    # Allocate qubits
+    q1 = qubit.qalloc()
+    q2 = qubit.qalloc()
+    
+    # Get qubit IDs
+    id1 = qubit.get_qubit_id(q1)
+    id2 = qubit.get_qubit_id(q2)
+    
+    # Apply gates
+    native.h(q1)
+    native.cx(q1, q2)
+    
+    # Reset to |0⟩
+    qubit.reset(q1)
+    qubit.reset(q2)
+```
+
+### Measurements
+
+```python
+from bloqade import native, qubit
+
+@native.kernel
+def measurement_example():
+    q = qubit.qalloc()
+    
+    # Prepare state
+    native.h(q)
+    native.rx(1.2, q)
+    
+    # Measure in computational basis
+    result = qubit.measure(q)
+    
+    # Conditional operations based on measurement
+    if qubit.is_zero(result):
+        native.x(q)
+    elif qubit.is_one(result):
+        native.z(q)
+```
+
+## Available Operations
+
+### Single-Qubit Clifford Gates
+
+```python
+native.h(q)           # Hadamard
+native.s(q)           # S gate (√Z)
+native.s_dag(q)       # S† 
+native.x(q)           # Pauli-X
+native.y(q)           # Pauli-Y
+native.z(q)           # Pauli-Z
+native.sqrt_x(q)      # √X
+native.sqrt_y(q)      # √Y
+native.sqrt_x_adj(q)  # √X†
+native.sqrt_y_adj(q)  # √Y†
+```
+
+### Non-Clifford Gates
+
+```python
+native.t(q)           # T gate (not always hardware-native)
+```
+
+### Rotation Gates
+
+```python
+native.rx(angle, q)   # X rotation
+native.ry(angle, q)   # Y rotation
+native.rz(angle, q)   # Z rotation
+native.shift(angle, q)         # Phase shift on |1⟩
+```
+
+### Universal Gates
+
+```python
+native.u3(theta, phi, lam, q)
+native.phased_xz(x_rad, z_rad, axis_phase_rad, q)
+```
+
+### Two-Qubit Gates
+
+```python
+native.cx(control, target)
+native.cy(control, target)
+native.cz(control, target)  # Often native for neutral atoms
+```
+
+### Broadcast Operations
+
+All single-qubit and two-qubit gates have broadcast versions:
+
+```python
+native.broadcast.h(qubits)
+native.broadcast.rx(angle, qubits)
+native.broadcast.cx(controls, targets)
+# ... and more
+```
+
+## Example: Bell State Preparation
+
+```python
+from bloqade import native, qubit
+
+@native.kernel
+def bell_state():
+    """Create a Bell pair using native operations."""
+    q0 = qubit.qalloc()
+    q1 = qubit.qalloc()
+    
+    # Prepare |Φ+⟩ = (|00⟩ + |11⟩)/√2
+    native.h(q0)          # Create superposition
+    native.cz(q0, q1)     # Entangle (native operation)
+    native.h(q1)          # Convert CZ to CX effect
+    
+    return q0, q1
+```
+
+## Example: Quantum Fourier Transform
+
+```python
+import math
+from bloqade import native, qubit
+
+@native.kernel
+def qft_3qubit():
+    """3-qubit Quantum Fourier Transform using native gates."""
+    q = [qubit.qalloc() for _ in range(3)]
+    
+    # QFT circuit
+    native.h(q[0])
+    native.shift(math.pi/2, q[0])
+    native.cz(q[1], q[0])
+    native.shift(math.pi/4, q[0])
+    native.cz(q[2], q[0])
+    
+    native.h(q[1])
+    native.shift(math.pi/2, q[1])
+    native.cz(q[2], q[1])
+    
+    native.h(q[2])
+    
+    return q
+```
+
+## Performance Considerations
+
+<Check>Native dialect provides:</Check>
+
+- **Minimal gate decomposition**: Operations map directly to hardware
+- **Optimized compilation**: Faster circuit preparation
+- **Hardware awareness**: Use physically natural operations (e.g., CZ for atoms)
+- **Broadcast efficiency**: Apply gates to many qubits in parallel
+
+<Warning>
+While Native dialect reduces software overhead, actual performance depends on the hardware backend. Some "native" gates may still require calibration or have hardware-specific limitations.
+</Warning>
+
+## When to Use Native
+
+<Check>Use Native dialect when you:</Check>
+
+- Need minimal compilation and maximum performance
+- Are programming neutral atom quantum computers
+- Want to express circuits in hardware-native operations
+- Need to optimize gate sequences for specific hardware
+- Are working with analog quantum operations
+- Want to avoid unnecessary gate decompositions
+
+## Hardware Backends
+
+The Native dialect is designed for:
+
+- **Neutral atom systems**: Rydberg blockade for CZ gates
+- **Trapped ion systems**: Geometric phase gates
+- **Superconducting qubits**: Native two-qubit gate sets
+- **Photonic systems**: Beamsplitter and phase shifter operations
+
+Consult your hardware documentation for the specific native gate set.
+
+## Related Dialects
+
+<CardGroup cols={2}>
+  <Card title="SQuIn Dialect" icon="layer-group" href="/dialects/squin">
+    For stabilizer circuits with noise modeling
+  </Card>
+  <Card title="QASM2 Dialect" icon="code" href="/dialects/qasm2">
+    For universal gate set programming
+  </Card>
+</CardGroup>

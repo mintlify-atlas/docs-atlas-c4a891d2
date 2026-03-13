@@ -1,0 +1,168 @@
+---
+title: "Devices"
+description: "Understanding device abstractions for running quantum circuits"
+---
+
+## Overview
+
+Devices in Bloqade Circuit represent the execution targets for your quantum programs. They provide a unified interface for running kernels on different backends, whether they are remote quantum processors, local simulators, or other execution environments.
+
+## Device Types
+
+Bloqade Circuit provides three main device abstractions:
+
+### AbstractDevice
+
+The base interface that all devices must implement:
+
+```python
+class AbstractDevice(abc.ABC, Generic[TaskType]):
+    """Abstract base class for devices."""
+    
+    @abc.abstractmethod
+    def task(
+        self,
+        kernel: ir.Method[Params, RetType],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+    ) -> TaskType:
+        """Creates a task for the device."""
+```
+
+The `task()` method is the fundamental operation - it takes a kernel and returns a [Task](/concepts/tasks) that can be executed.
+
+### AbstractRemoteDevice
+
+For devices that execute kernels remotely (e.g., on cloud quantum processors):
+
+```python
+class AbstractRemoteDevice(AbstractDevice[RemoteTaskType]):
+    """Abstract base class for remote devices."""
+    
+    def run(
+        self,
+        kernel: ir.Method[Params, RetType],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+        *,
+        shots: int = 1,
+        timeout: float | None = None,
+    ) -> list[RetType]:
+        """Runs the kernel and returns the result."""
+    
+    def run_async(
+        self,
+        kernel: ir.Method[Params, RetType],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+        *,
+        shots: int = 1,
+    ) -> BatchFuture[RetType]:
+        """Runs the kernel asynchronously."""
+```
+
+**Key capabilities:**
+- **Multiple shots**: Execute the same kernel multiple times
+- **Asynchronous execution**: Submit jobs and retrieve results later
+- **Timeout control**: Specify how long to wait for results
+
+### AbstractSimulatorDevice
+
+For local simulator devices:
+
+```python
+class AbstractSimulatorDevice(AbstractDevice[SimulatorTaskType]):
+    """Abstract base class for simulator devices."""
+    
+    def run(
+        self,
+        kernel: ir.Method[Params, RetType],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+    ) -> RetType:
+        """Runs the kernel and returns the result."""
+```
+
+**Key difference**: Simulators return a single result directly, rather than a list of shot results.
+
+## Usage Patterns
+
+### Running on a Remote Device
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def bell_state():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    return squin.broadcast.measure(q)
+
+# Synchronous execution with multiple shots
+results = device.run(bell_state, shots=100)
+
+# Asynchronous execution
+future = device.run_async(bell_state, shots=100)
+# Do other work...
+results = future.result(timeout=30.0)
+```
+
+### Running on a Simulator
+
+```python
+from bloqade.pyqrack import StackMemorySimulator
+
+sim = StackMemorySimulator(min_qubits=2)
+result = sim.run(bell_state)
+```
+
+## Device Selection
+
+When choosing a device, consider:
+
+<CardGroup cols={2}>
+  <Card title="Remote Devices" icon="cloud">
+    - Real quantum hardware
+    - Cloud-based simulators
+    - Support multiple shots
+    - Asynchronous execution
+  </Card>
+  <Card title="Simulator Devices" icon="computer">
+    - Local execution
+    - Fast feedback
+    - Full state access
+    - Deterministic results
+  </Card>
+</CardGroup>
+
+## Expectation Values
+
+Devices that implement `ExpectationDeviceMixin` can compute expectation values:
+
+```python
+class ExpectationDeviceMixin(AbstractDevice[ExpectTaskType]):
+    def expect(
+        self,
+        kernel: ir.Method[Params, RetType],
+        observable: ir.Method[[RetType], ObsType],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+        *,
+        shots: int = 1,
+    ) -> ObsType:
+        """Returns the expectation value of the observable."""
+```
+
+This allows you to compute expectation values directly without manually processing measurement results.
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Tasks" icon="list-check" href="/concepts/tasks">
+    Learn about the task objects returned by devices
+  </Card>
+  <Card title="Circuits" icon="diagram-project" href="/concepts/circuits">
+    Understand how to compile kernels to circuits
+  </Card>
+</CardGroup>

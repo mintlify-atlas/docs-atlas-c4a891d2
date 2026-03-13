@@ -1,0 +1,547 @@
+---
+title: Circuit Analysis
+description: Validate circuits and analyze fidelity using Bloqade Circuit analysis tools
+---
+
+## Overview
+
+Bloqade Circuit provides comprehensive analysis tools to validate quantum circuits, estimate fidelity under noise, and ensure correctness before execution. This guide covers validation, fidelity analysis, and address analysis.
+
+## Validation
+
+### No-Cloning Validation
+
+The no-cloning validation ensures that qubits are not used multiple times in the same operation, which would violate quantum mechanics:
+
+```python
+from bloqade import squin
+from bloqade.analysis.validation.simple_nocloning import FlatKernelNoCloningValidation
+from bloqade.rewrite.passes import AggressiveUnroll
+from kirin.validation import ValidationSuite
+
+@squin.kernel
+def invalid_circuit():
+    q = squin.qalloc(3)
+    # Invalid: q[0] appears twice
+    squin.broadcast.x([q[0], q[1], q[0]])
+    # Invalid: q[1] appears twice
+    squin.broadcast.rx(0.123, [q[1], q[1]])
+    # Invalid: same qubit as control and target
+    squin.cx(q[2], q[2])
+
+# Unroll operations first
+AggressiveUnroll(invalid_circuit.dialects).fixpoint(invalid_circuit)
+
+# Run validation
+_, errors = FlatKernelNoCloningValidation().run(invalid_circuit)
+print(f"Found {len(errors)} no-cloning violations")
+```
+
+<Warning>
+Always unroll broadcast operations before validation to detect issues in expanded gates.
+</Warning>
+
+### Validation Suite
+
+Use validation suites to run multiple checks:
+
+```python
+from kirin.ir.exception import ValidationErrorGroup
+import pytest
+
+@squin.kernel
+def circuit_to_validate():
+    q = squin.qalloc(3)
+    squin.broadcast.depolarize(0.1, [q[0], q[0]])  # Invalid
+    squin.broadcast.depolarize2(0.1, [q[0]], [q[0]])  # Invalid
+
+AggressiveUnroll(circuit_to_validate.dialects).fixpoint(circuit_to_validate)
+
+validation_suite = ValidationSuite([FlatKernelNoCloningValidation])
+result = validation_suite.validate(circuit_to_validate)
+
+print(f"Total errors: {result.error_count()}")
+
+# Raise if invalid
+try:
+    result.raise_if_invalid()
+except ValidationErrorGroup as e:
+    print(f"Validation failed: {e}")
+```
+
+### Validating Noise Operations
+
+Check for correlated qubit loss violations:
+
+```python
+@squin.kernel
+def invalid_correlated_loss():
+    q = squin.qalloc(3)
+    # Invalid: q[1] appears in both regions
+    squin.broadcast.correlated_qubit_loss(0.1, [[q[0], q[1]], [q[1], q[2]]])
+
+AggressiveUnroll(invalid_correlated_loss.dialects).fixpoint(invalid_correlated_loss)
+
+validation_suite = ValidationSuite([FlatKernelNoCloningValidation])
+result = validation_suite.validate(invalid_correlated_loss)
+assert result.error_count() == 1
+```
+
+## Fidelity Analysis
+
+### Basic Fidelity Estimation
+
+Analyze how noise channels affect gate fidelity:
+
+```python
+from bloqade import squin
+from bloqade.analysis.fidelity import FidelityAnalysis, FidelityRange
+
+@squin.kernel
+def noisy_circuit():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.single_qubit_pauli_channel(0.1, 0.2, 0.3, q[0])
+    squin.cx(q[0], q[1])
+    squin.qubit_loss(0.1, q[1])
+
+fid_analysis = FidelityAnalysis(noisy_circuit.dialects)
+frame, _ = fid_analysis.run(noisy_circuit)
+
+print("Gate fidelities:")
+for i, fid in enumerate(fid_analysis.gate_fidelities):
+    print(f"  Qubit {i}: [{fid.min:.3f}, {fid.max:.3f}]")
+
+print("\nSurvival fidelities:")
+for i, fid in enumerate(fid_analysis.qubit_survival_fidelities):
+    print(f"  Qubit {i}: [{fid.min:.3f}, {fid.max:.3f}]")
+```
+
+Output:
+```
+Gate fidelities:
+  Qubit 0: [0.400, 0.400]
+  Qubit 1: [1.000, 1.000]
+
+Survival fidelities:
+  Qubit 0: [1.000, 1.000]
+  Qubit 1: [0.900, 0.900]
+```
+
+### Fidelity Range
+
+Fidelity analysis returns `FidelityRange` objects with min/max bounds:
+
+```python
+fid = FidelityRange(min=0.95, max=0.98)
+print(f"Fidelity: {fid.min:.2%} - {fid.max:.2%}")
+
+# Perfect fidelity
+perfect = FidelityRange(1.0, 1.0)
+assert perfect == FidelityRange(1.0, 1.0)
+```
+
+<Note>
+Fidelity ranges account for conditional operations where different execution paths have different noise levels.
+</Note>
+
+### Analyzing Noise Channels
+
+#### Single-Qubit Pauli Channel
+
+```python
+@squin.kernel
+def pauli_noise():
+    q = squin.qalloc(2)
+    # Pauli errors: px + py + pz = 0.01
+    squin.single_qubit_pauli_channel(0.15, 0.2, 0.25, q[0])
+
+fid_analysis = FidelityAnalysis(pauli_noise.dialects)
+fid_analysis.run(pauli_noise)
+
+# Gate fidelity = 1 - (px + py + pz) = 1 - 0.6 = 0.4
+assert fid_analysis.gate_fidelities[0] == FidelityRange(0.4, 0.4)
+```
+
+#### Depolarizing Channel
+
+```python
+@squin.kernel
+def depolarizing_noise():
+    q = squin.qalloc(2)
+    squin.depolarize(0.2, q[0])  # 20% depolarizing
+
+fid_analysis = FidelityAnalysis(depolarizing_noise.dialects)
+fid_analysis.run(depolarizing_noise)
+
+# Fidelity = 1 - p = 0.8
+assert fid_analysis.gate_fidelities[0] == FidelityRange(0.8, 0.8)
+```
+
+#### Two-Qubit Depolarizing
+
+```python
+from kirin.dialects import ilist
+
+@squin.kernel
+def two_qubit_noise():
+    q = squin.qalloc(2)
+    squin.depolarize2(0.15, q[0], q[1])
+
+fid_analysis = FidelityAnalysis(two_qubit_noise.dialects)
+fid_analysis.run(two_qubit_noise)
+
+# Both qubits affected
+# Fidelity = 1 - (p * 12/15) = 1 - 0.12 = 0.88
+assert fid_analysis.gate_fidelities[0] == FidelityRange(0.88, 0.88)
+assert fid_analysis.gate_fidelities[1] == FidelityRange(0.88, 0.88)
+```
+
+#### Atom Loss
+
+```python
+@squin.kernel
+def atom_loss():
+    q = squin.qalloc(2)
+    squin.qubit_loss(0.1, q[0])  # 10% loss probability
+
+fid_analysis = FidelityAnalysis(atom_loss.dialects)
+fid_analysis.run(atom_loss)
+
+# Gate fidelity unchanged
+assert fid_analysis.gate_fidelities == [FidelityRange(1.0, 1.0)] * 2
+
+# Survival probability = 1 - p_loss
+assert fid_analysis.qubit_survival_fidelities[0] == FidelityRange(0.9, 0.9)
+assert fid_analysis.qubit_survival_fidelities[1] == FidelityRange(1.0, 1.0)
+```
+
+#### Correlated Loss
+
+```python
+@squin.kernel
+def correlated_loss():
+    q = squin.qalloc(4)
+    squin.correlated_qubit_loss(0.13, ilist.IList([q[0], q[1], q[2], q[3]]))
+
+fid_analysis = FidelityAnalysis(correlated_loss.dialects)
+fid_analysis.run(correlated_loss)
+
+# All qubits have same survival probability
+for i in range(4):
+    assert fid_analysis.qubit_survival_fidelities[i] == FidelityRange(0.87, 0.87)
+```
+
+### QASM2 Circuit Analysis
+
+Analyze QASM2 circuits with noise models:
+
+```python
+from bloqade import qasm2
+from bloqade.qasm2 import noise
+from bloqade.qasm2.passes.noise import NoisePass
+
+@qasm2.extended
+def qasm_circuit():
+    q = qasm2.qreg(2)
+    noise.pauli_channel([q[0]], px=0.01/3, py=0.01/3, pz=0.01/3)
+    qasm2.h(q[0])
+    return q
+
+fid_analysis = FidelityAnalysis(qasm_circuit.dialects)
+fid_analysis.run(qasm_circuit)
+
+expected_fidelity = 1 - 0.01
+assert fid_analysis.gate_fidelities[0] == FidelityRange(expected_fidelity, expected_fidelity)
+```
+
+### Analyzing Conditional Operations
+
+Fidelity analysis tracks different paths through conditional code:
+
+```python
+@squin.kernel
+def conditional_noise():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    m = squin.measure(q[0])
+    
+    if m:
+        squin.depolarize(0.1, q[0])
+        squin.qubit_loss(0.25, q[1])
+    else:
+        squin.depolarize(0.2, q[1])
+        squin.qubit_loss(0.15, q[0])
+
+fid_analysis = FidelityAnalysis(conditional_noise.dialects)
+fid_analysis.run(conditional_noise)
+
+# Fidelity ranges reflect both branches
+assert fid_analysis.gate_fidelities == [
+    FidelityRange(0.9, 1.0),   # q[0]: 0.9 if m else 1.0
+    FidelityRange(0.8, 1.0),   # q[1]: 1.0 if m else 0.8
+]
+
+assert fid_analysis.qubit_survival_fidelities == [
+    FidelityRange(0.85, 1.0),  # q[0]: 1.0 if m else 0.85
+    FidelityRange(0.75, 1.0),  # q[1]: 0.75 if m else 1.0
+]
+```
+
+### Analyzing Loops
+
+Fidelity accumulates through loop iterations:
+
+```python
+@squin.kernel
+def loop_noise():
+    q = squin.qalloc(4)
+    
+    for i in range(4):
+        squin.depolarize(0.01 * i, q[i])
+
+fid_analysis = FidelityAnalysis(loop_noise.dialects)
+fid_analysis.run(loop_noise)
+
+assert fid_analysis.gate_fidelities == [
+    FidelityRange(1.0, 1.0),      # i=0: no noise
+    FidelityRange(0.99, 0.99),    # i=1: 1% depolarizing
+    FidelityRange(0.98, 0.98),    # i=2: 2% depolarizing
+    FidelityRange(0.97, 0.97),    # i=3: 3% depolarizing
+]
+```
+
+## Address Analysis
+
+### Analyzing Qubit Addresses
+
+Determine qubit count and address mapping:
+
+```python
+from bloqade.analysis.address import AddressAnalysis, UnknownQubit
+
+@squin.kernel
+def address_example():
+    q1 = squin.qalloc(3)
+    q2 = squin.qalloc(2)
+    squin.h(q1[0])
+    squin.cx(q1[2], q2[1])
+
+address_analysis = AddressAnalysis(address_example.dialects)
+frame, _ = address_analysis.run(address_example)
+
+print(f"Total qubit count: {address_analysis.qubit_count}")
+print(f"Addresses: {frame.entries}")
+```
+
+<Tip>
+Address analysis is automatically run by `StackMemorySimulator` to determine the required number of qubits.
+</Tip>
+
+### Handling Unknown Addresses
+
+Some circuits have dynamically determined qubit counts:
+
+```python
+@squin.kernel
+def dynamic_circuit(n: int):
+    q = squin.qalloc(n)
+    for i in range(n):
+        squin.h(q[i])
+
+address_analysis = AddressAnalysis(dynamic_circuit.dialects)
+frame, _ = address_analysis.run(dynamic_circuit)
+
+# Check for unknown addresses
+has_unknown = any(
+    isinstance(a, UnknownQubit) for a in frame.entries.values()
+)
+
+if has_unknown:
+    print("Circuit has dynamic qubit allocation")
+    # Specify min_qubits when simulating
+```
+
+## Noise Models
+
+### Custom Noise Models
+
+Define custom noise models for QASM2 circuits:
+
+```python
+from bloqade.qasm2 import noise
+
+class CustomNoiseModel(noise.MoveNoiseModelABC):
+    def parallel_cz_errors(self, ctrls, qargs, rest):
+        """Define CZ gate errors."""
+        # Return dict mapping (px, py, pz, p_loss) -> affected qubits
+        return {(0.01, 0.01, 0.01, 0.01): ctrls + qargs + rest}
+
+@qasm2.extended
+def circuit_with_noise():
+    q = qasm2.qreg(2)
+    c = qasm2.creg(2)
+    qasm2.h(q[0])
+    qasm2.cz(q[0], q[1])
+    qasm2.measure(q, c)
+    return c
+
+model = CustomNoiseModel(
+    global_loss_prob=0.01,
+    local_loss_prob=0.01,
+    global_px=0.01,
+    global_py=0.01,
+    global_pz=0.01,
+    local_px=0.002,
+)
+
+NoisePass(circuit_with_noise.dialects, noise_model=model)(circuit_with_noise)
+fid_analysis = FidelityAnalysis(circuit_with_noise.dialects)
+fid_analysis.run(circuit_with_noise)
+
+circuit_with_noise.print()  # See injected noise
+```
+
+## Best Practices
+
+<Steps>
+<Step title="Validate before simulation">
+Always validate circuits to catch errors early:
+
+```python
+validation_suite = ValidationSuite([FlatKernelNoCloningValidation])
+result = validation_suite.validate(circuit)
+result.raise_if_invalid()
+```
+</Step>
+
+<Step title="Analyze fidelity with realistic noise">
+Use fidelity analysis to estimate performance under realistic noise:
+
+```python
+fid_analysis = FidelityAnalysis(circuit.dialects)
+fid_analysis.run(circuit)
+
+for i, fid in enumerate(fid_analysis.gate_fidelities):
+    if fid.min < 0.9:
+        print(f"Warning: Qubit {i} fidelity below 90%")
+```
+</Step>
+
+<Step title="Check address resolution">
+Ensure qubit addresses are resolved before stack memory simulation:
+
+```python
+address_analysis = AddressAnalysis(circuit.dialects)
+frame, _ = address_analysis.run(circuit)
+
+if any(isinstance(a, UnknownQubit) for a in frame.entries.values()):
+    print("Use DynamicMemorySimulator or specify min_qubits")
+```
+</Step>
+
+<Step title="Profile noise impact">
+Compare fidelity with and without noise:
+
+```python
+# Analyze noisy circuit
+fid_noisy = FidelityAnalysis(noisy_circuit.dialects)
+fid_noisy.run(noisy_circuit)
+
+# Analyze ideal circuit
+fid_ideal = FidelityAnalysis(ideal_circuit.dialects)
+fid_ideal.run(ideal_circuit)
+
+for i in range(len(fid_noisy.gate_fidelities)):
+    impact = fid_ideal.gate_fidelities[i].min - fid_noisy.gate_fidelities[i].min
+    print(f"Qubit {i} fidelity impact: {impact:.3f}")
+```
+</Step>
+</Steps>
+
+## Example: Complete Analysis Pipeline
+
+```python
+from bloqade import squin
+from bloqade.rewrite.passes import AggressiveUnroll
+from bloqade.analysis.validation.simple_nocloning import FlatKernelNoCloningValidation
+from bloqade.analysis.fidelity import FidelityAnalysis
+from bloqade.analysis.address import AddressAnalysis
+from kirin.validation import ValidationSuite
+from kirin.passes import Fold
+
+@squin.kernel
+def production_circuit():
+    q = squin.qalloc(5)
+    
+    # Prepare superposition
+    for i in range(5):
+        squin.h(q[i])
+        squin.depolarize(0.001, q[i])
+    
+    # Create entanglement
+    for i in range(4):
+        squin.cx(q[i], q[i + 1])
+        squin.depolarize2(0.002, q[i], q[i + 1])
+    
+    return squin.broadcast.measure(q)
+
+def analyze_circuit(circuit):
+    """Complete analysis pipeline."""
+    print("Step 1: Constant folding...")
+    Fold(circuit.dialects)(circuit)
+    
+    print("Step 2: Unrolling operations...")
+    AggressiveUnroll(circuit.dialects).fixpoint(circuit)
+    
+    print("Step 3: Validating...")
+    validation_suite = ValidationSuite([FlatKernelNoCloningValidation])
+    result = validation_suite.validate(circuit)
+    
+    if result.error_count() > 0:
+        print(f"  ❌ Validation failed with {result.error_count()} errors")
+        result.raise_if_invalid()
+    else:
+        print("  ✓ Validation passed")
+    
+    print("Step 4: Address analysis...")
+    address_analysis = AddressAnalysis(circuit.dialects)
+    frame, _ = address_analysis.run(circuit)
+    print(f"  Total qubits: {address_analysis.qubit_count}")
+    
+    print("Step 5: Fidelity analysis...")
+    fid_analysis = FidelityAnalysis(circuit.dialects)
+    fid_analysis.run(circuit)
+    
+    avg_fidelity = sum(f.min for f in fid_analysis.gate_fidelities) / len(fid_analysis.gate_fidelities)
+    print(f"  Average gate fidelity: {avg_fidelity:.4f}")
+    
+    min_survival = min(f.min for f in fid_analysis.qubit_survival_fidelities)
+    print(f"  Minimum survival probability: {min_survival:.4f}")
+    
+    print("\nAnalysis complete!")
+    return {
+        "qubit_count": address_analysis.qubit_count,
+        "gate_fidelities": fid_analysis.gate_fidelities,
+        "survival_fidelities": fid_analysis.qubit_survival_fidelities,
+    }
+
+results = analyze_circuit(production_circuit)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backends" icon="server" href="/guides/backends">
+    Configure simulator backends for execution
+  </Card>
+  <Card title="Writing Circuits" icon="code" href="/guides/writing-circuits">
+    Learn circuit composition best practices
+  </Card>
+  <Card title="Simulations" icon="play" href="/guides/simulations">
+    Run circuits on different backends
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/analysis">
+    Explore analysis API documentation
+  </Card>
+</CardGroup>

@@ -1,0 +1,352 @@
+---
+title: 'Dialects'
+description: 'QASM2 dialect system for extending quantum operations'
+---
+
+## Overview
+
+The `bloqade.qasm2.dialects` module provides a flexible dialect system for defining and composing quantum operations in QASM2. Dialects allow you to organize related operations and extend QASM2 functionality with custom gates, parallel operations, noise models, and more.
+
+## Available Dialects
+
+### Core Dialect
+
+The core dialect (`bloqade.qasm2.dialects.core`) provides fundamental quantum register operations.
+
+**Operations:**
+
+- `QRegNew`: Create a new quantum register
+- `CRegNew`: Create a new classical register
+- `QRegGet`: Get a qubit from a quantum register
+- `CRegGet`: Get a bit from a classical register
+- `CRegEq`: Compare classical register values
+- `Measure`: Measure quantum state to classical bit
+- `Reset`: Reset qubit to |0⟩ state
+
+**Example:**
+
+```python
+from bloqade.qasm2.dialects import core
+
+# Core operations are used internally by wrapper functions
+# such as qreg(), creg(), measure(), and reset()
+```
+
+### UOP Dialect
+
+The UOP (unitary operation) dialect (`bloqade.qasm2.dialects.uop`) defines standard quantum gates.
+
+**Single-Qubit Gates:**
+
+- `H`: Hadamard gate
+- `X`, `Y`, `Z`: Pauli gates
+- `S`, `Sdag`: S and S-dagger gates
+- `T`, `Tdag`: T and T-dagger gates
+- `SX`, `SXdag`: Sqrt(X) and its dagger
+- `Id`: Identity gate
+- `UGate`: Universal single-qubit unitary
+- `U1`, `U2`: 1 and 2-parameter unitaries
+- `RX`, `RY`, `RZ`: Rotation gates
+
+**Two-Qubit Gates:**
+
+- `CX`: Controlled-X (CNOT)
+- `CZ`: Controlled-Z
+- `CY`: Controlled-Y
+- `CH`: Controlled-Hadamard
+- `CSX`: Controlled-SX
+- `Swap`: Swap gate
+
+**Controlled Rotation Gates:**
+
+- `CRX`, `CRY`, `CRZ`: Controlled rotations
+- `CU1`, `CU3`, `CU`: Controlled unitary gates
+
+**Multi-Qubit Gates:**
+
+- `CCX`: Toffoli (controlled-controlled-X)
+- `CSwap`: Fredkin (controlled-swap)
+- `RXX`, `RZZ`: Two-qubit rotation gates
+
+**Other:**
+
+- `Barrier`: Barrier instruction for scheduling
+
+**Example:**
+
+```python
+from bloqade.qasm2.dialects import uop
+
+# UOP gates are used by wrapper functions
+# such as h(), cx(), rz(), etc.
+```
+
+### Expression Dialect
+
+The expression dialect (`bloqade.qasm2.dialects.expr`) provides mathematical expressions and constants for parameterized gates.
+
+**Operations:**
+
+- `Add`, `Sub`, `Mul`, `Div`: Arithmetic operations
+- `Neg`: Negation
+- `Pow`: Exponentiation
+- `Sin`, `Cos`, `Tan`: Trigonometric functions
+- `Exp`: Exponential function
+- `Log`: Natural logarithm
+- `Sqrt`: Square root
+- `ConstInt`: Integer constant
+- `ConstFloat`: Float constant
+- `ConstPI`: Pi constant
+- `GateFunction`: Custom gate function definition
+
+**Example:**
+
+```python
+from bloqade import qasm2
+
+# Expression operations are used through wrapper functions
+angle = qasm2.sin(qasm2.ConstPI() / 4)
+qasm2.rx(qubit, angle)
+```
+
+### Parallel Dialect
+
+The parallel dialect (`bloqade.qasm2.dialects.parallel`) enables parallel quantum operations across multiple qubits.
+
+**Operations:**
+
+```python
+@statement(dialect=dialect)
+class CZ(ir.Statement):
+    """Parallel controlled-Z operation across multiple qubit pairs."""
+    name = "cz"
+    ctrls: ir.SSAValue  # IList of control qubits
+    qargs: ir.SSAValue  # IList of target qubits
+```
+
+```python
+@statement(dialect=dialect)
+class UGate(ir.Statement):
+    """Parallel universal gate across multiple qubits."""
+    name = "u"
+    qargs: ir.SSAValue  # IList of qubits
+    theta: ir.SSAValue  # Float parameter
+    phi: ir.SSAValue    # Float parameter
+    lam: ir.SSAValue    # Float parameter
+```
+
+```python
+@statement(dialect=dialect)
+class RZ(ir.Statement):
+    """Parallel RZ rotation across multiple qubits."""
+    name = "rz"
+    qargs: ir.SSAValue  # IList of qubits
+    theta: ir.SSAValue  # Float parameter
+```
+
+**Example:**
+
+```python
+from bloqade import qasm2
+
+# Parallel operations are typically used internally
+# when working with quantum registers
+qreg = qasm2.qreg(5)
+# Operations on entire register may use parallel dialect
+```
+
+### Glob Dialect
+
+The glob dialect (`bloqade.qasm2.dialects.glob`) provides global operations that apply to all qubits.
+
+**Usage:**
+
+Global operations are typically transformed into parallel operations during compilation.
+
+### Noise Dialect
+
+The noise dialect (`bloqade.qasm2.dialects.noise`) adds support for noise models in quantum simulations.
+
+<Note>
+This module is not guaranteed to be supported long-term in Bloqade. The project is moving towards a more general approach to noise modeling in the future.
+</Note>
+
+**Operations:**
+
+- `PauliChannel`: Pauli noise channel
+- `CZPauliChannel`: CZ gate with Pauli noise
+- `AtomLossChannel`: Atom loss noise model
+
+**Models:**
+
+```python
+class MoveNoiseModelABC:
+    """Abstract base class for move noise models."""
+    pass
+```
+
+```python
+class TwoRowZoneModel(MoveNoiseModelABC):
+    """Two-row zone noise model for atom movement."""
+    pass
+```
+
+**Fidelity:**
+
+```python
+class FidelityMethodTable:
+    """Method table for fidelity calculations."""
+    pass
+```
+
+**Example:**
+
+```python
+from bloqade.qasm2.dialects import noise
+
+# Noise operations for realistic simulations
+# noise.PauliChannel(qubit, px, py, pz)
+```
+
+### Inline Dialect
+
+The inline dialect (`bloqade.qasm2.dialects.inline`) allows embedding raw QASM code directly.
+
+**Example:**
+
+```python
+from bloqade import qasm2
+
+qasm2.inline("""
+// Custom QASM code
+gate my_gate q {
+  h q;
+  s q;
+}
+""")
+```
+
+### Indexing Dialect
+
+The indexing dialect (`bloqade.qasm2.dialects.indexing`) provides operations for indexing into quantum and classical registers.
+
+## Dialect Groups
+
+Dialect groups combine multiple dialects for specific use cases.
+
+### gate
+
+```python
+@ir.dialect_group([uop, func, expr, lowering.func, lowering.call, ssacfg])
+def gate(self):
+    """Dialect group for gate definitions."""
+    pass
+```
+
+The `gate` dialect group is used for defining custom quantum gates. It includes:
+- UOP gates
+- Expression support
+- Function definitions
+
+**Usage:**
+
+```python
+from bloqade.qasm2.groups import gate
+
+# Used internally when defining custom gates
+```
+
+### main
+
+```python
+@ir.dialect_group([
+    uop, expr, core, scf, indexing, func, 
+    lowering.func, lowering.call, ssacfg
+])
+def main(self):
+    """Dialect group for main QASM2 programs."""
+    pass
+```
+
+The `main` dialect group is the default for QASM2 programs. It includes:
+- All basic gates (UOP)
+- Expressions
+- Core operations (registers, measure)
+- Control flow (SCF)
+- Indexing
+
+**Usage:**
+
+```python
+from bloqade import qasm2
+
+# main is the default dialect group for loads()
+method = qasm2.loads(qasm_string)
+```
+
+### extended
+
+```python
+@ir.dialect_group(structural_no_opt.union([
+    inline, uop, glob, noise, parallel, core
+]))
+def extended(self):
+    """Extended dialect group with all features."""
+    pass
+```
+
+The `extended` dialect group includes all available dialects:
+- Inline QASM
+- Parallel operations
+- Global operations
+- Noise models
+- All standard gates
+
+**Usage:**
+
+```python
+from bloqade.qasm2.groups import extended
+
+# Use extended for advanced features
+method = qasm2.loads(qasm_string, dialects=extended)
+```
+
+## Creating Custom Dialects
+
+You can create custom dialects by defining new statement types:
+
+```python
+from kirin import ir
+from kirin.decl import statement, info
+
+dialect = ir.Dialect("my_dialect")
+
+@statement(dialect=dialect)
+class MyCustomGate(ir.Statement):
+    name = "my_gate"
+    qarg: ir.SSAValue = info.argument(QubitType)
+    angle: ir.SSAValue = info.argument(types.Float)
+```
+
+## Dialect Composition
+
+Dialects can be combined and extended:
+
+```python
+from bloqade.qasm2 import groups
+
+# Start with main dialect
+my_dialects = groups.main
+
+# Add noise support
+my_dialects = my_dialects.add(noise)
+
+# Use in loads
+method = qasm2.loads(qasm_string, dialects=my_dialects)
+```
+
+## See Also
+
+- [Parser](/api/qasm2/parser): Parse QASM2 code
+- [Emitter](/api/qasm2/emitter): Generate QASM2 output
+- [Overview](/api/qasm2/overview): QASM2 module overview

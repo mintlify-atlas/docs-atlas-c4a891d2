@@ -1,122 +1,126 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Bloqade Circuit",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#f41c7c",
+    "light": "#1c1434",
+    "dark": "#fc7cbc"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/f2cb80d8-4fac-482d-87fc-f2e0cecf62ec.svg",
+  "logo": {
+    "light": "https://media.brand.dev/99afb4b8-4331-498b-aff4-43ebcee1882e.svg",
+    "dark": "https://media.brand.dev/99afb4b8-4331-498b-aff4-43ebcee1882e.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/QuEraComputing/bloqade-circuit"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/QuEraComputing/bloqade-circuit"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/devices",
+              "concepts/tasks",
+              "concepts/qubits",
+              "concepts/circuits"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Circuit Dialects",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "dialects/overview",
+              "dialects/qasm2",
+              "dialects/squin",
+              "dialects/stim",
+              "dialects/native",
+              "dialects/gemini"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Guides",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/writing-circuits",
+              "guides/simulations",
+              "guides/analysis",
+              "guides/backends"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core API",
             "pages": [
-              "api-reference/introduction"
+              "api/device",
+              "api/task",
+              "api/types"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "QASM2",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/qasm2/overview",
+              "api/qasm2/dialects",
+              "api/qasm2/parser",
+              "api/qasm2/emitter"
+            ]
+          },
+          {
+            "group": "Squin",
+            "pages": [
+              "api/squin/overview",
+              "api/squin/gates",
+              "api/squin/noise",
+              "api/squin/stdlib"
+            ]
+          },
+          {
+            "group": "STIM",
+            "pages": [
+              "api/stim/overview",
+              "api/stim/circuit",
+              "api/stim/dialects"
+            ]
+          },
+          {
+            "group": "Simulators",
+            "pages": [
+              "api/simulators/pyqrack",
+              "api/simulators/cirq",
+              "api/simulators/qbraid"
+            ]
+          },
+          {
+            "group": "Analysis",
+            "pages": [
+              "api/analysis/validation",
+              "api/analysis/fidelity"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

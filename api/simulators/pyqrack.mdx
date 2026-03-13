@@ -1,0 +1,477 @@
+---
+title: "PyQrack Simulator"
+description: "API reference for PyQrack quantum simulator integration"
+---
+
+The PyQrack simulator provides high-performance quantum circuit simulation using the QrackSimulator backend. It supports both static and dynamic qubit allocation strategies.
+
+## Simulator Classes
+
+### StackMemorySimulator
+
+```python
+from bloqade.pyqrack import StackMemorySimulator
+
+sim = StackMemorySimulator(min_qubits=2)
+```
+
+PyQrack simulator device with preallocated stack of qubits. Use this when the number of qubits is known ahead of time.
+
+<ParamField path="min_qubits" type="int" default="0">
+  Minimum number of qubits to preallocate in the simulator.
+</ParamField>
+
+<ParamField path="options" type="PyQrackOptions">
+  Options passed into the PyQrack simulator. See [PyQrackOptions](#pyqrackoptions) for details.
+</ParamField>
+
+<ParamField path="loss_m_result" type="MeasurementResultValue" default="MeasurementResultValue.One">
+  The value returned when measuring a lost qubit.
+</ParamField>
+
+<ParamField path="rng_state" type="np.random.Generator">
+  Random number generator state for simulator.
+</ParamField>
+
+#### Methods
+
+##### task
+
+```python
+task(
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None
+) -> PyQrackSimulatorTask
+```
+
+Create a simulation task for the given kernel.
+
+<ParamField path="kernel" type="ir.Method" required>
+  The kernel method to run.
+</ParamField>
+
+<ParamField path="args" type="tuple" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ResponseField name="return" type="PyQrackSimulatorTask">
+  The task object used to track execution.
+</ResponseField>
+
+##### state_vector
+
+```python
+state_vector(
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None
+) -> list[complex]
+```
+
+Runs the kernel and returns the state vector.
+
+<ResponseField name="return" type="list[complex]">
+  The state vector of the quantum system after executing the kernel.
+</ResponseField>
+
+##### pauli_expectation
+
+```python
+@staticmethod
+pauli_expectation(
+    pauli: list[Pauli],
+    qubits: list[PyQrackQubit]
+) -> float
+```
+
+Computes the expectation value of a Pauli operator.
+
+<ParamField path="pauli" type="list[Pauli]" required>
+  List of Pauli operators to compute the expectation value for.
+</ParamField>
+
+<ParamField path="qubits" type="list[PyQrackQubit]" required>
+  List of qubits corresponding to the Pauli operators.
+</ParamField>
+
+<ResponseField name="return" type="float">
+  The expectation value of the Pauli operator.
+</ResponseField>
+
+##### quantum_state
+
+```python
+@staticmethod
+quantum_state(
+    qubits: list[PyQrackQubit] | IList[PyQrackQubit, Any],
+    tol: float = 1e-12
+) -> QuantumState
+```
+
+Extract the reduced density matrix for a list of qubits.
+
+<ParamField path="qubits" type="list[PyQrackQubit]" required>
+  List of PyQrack qubits to extract the reduced density matrix for.
+</ParamField>
+
+<ParamField path="tol" type="float" default="1e-12">
+  Tolerance for density matrix eigenvalues to be considered non-zero.
+</ParamField>
+
+<ResponseField name="return" type="QuantumState">
+  The quantum state containing eigenvalues and eigenvectors of the reduced density matrix.
+</ResponseField>
+
+##### reduced_density_matrix
+
+```python
+@classmethod
+reduced_density_matrix(
+    qubits: list[PyQrackQubit] | IList[PyQrackQubit, Any],
+    tol: float = 1e-12
+) -> np.ndarray
+```
+
+Extract the reduced density matrix as a dense numpy array.
+
+<ParamField path="qubits" type="list[PyQrackQubit]" required>
+  List of PyQrack qubits to extract the reduced density matrix for.
+</ParamField>
+
+<ParamField path="tol" type="float" default="1e-12">
+  Tolerance for density matrix eigenvalues to be considered non-zero.
+</ParamField>
+
+<ResponseField name="return" type="np.ndarray">
+  A dense 2^n x 2^n numpy array representing the reduced density matrix.
+</ResponseField>
+
+#### Example
+
+```python
+from bloqade import qasm2
+from bloqade.pyqrack import StackMemorySimulator
+from pyqrack.pauli import Pauli
+
+# Define a kernel
+@qasm2.main
+def main():
+    q = qasm2.qreg(2)
+    c = qasm2.creg(2)
+
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+
+    qasm2.measure(q, c)
+    return q
+
+# Create the simulator
+sim = StackMemorySimulator(min_qubits=2)
+
+# Execute the kernel
+qubits = sim.run(main)
+
+# Get state vector
+ket = sim.state_vector(main)
+
+# Compute Pauli expectation
+expectation_vals = sim.pauli_expectation([Pauli.PauliX, Pauli.PauliI], qubits)
+```
+
+---
+
+### DynamicMemorySimulator
+
+```python
+from bloqade.pyqrack import DynamicMemorySimulator
+
+sim = DynamicMemorySimulator()
+```
+
+PyQrack simulator device with dynamic qubit allocation. Use this when the number of qubits is not known ahead of time.
+
+<ParamField path="options" type="PyQrackOptions">
+  Options passed into the PyQrack simulator. See [PyQrackOptions](#pyqrackoptions) for details.
+  Note: Tensor network simulation is not supported with dynamic memory.
+</ParamField>
+
+<ParamField path="loss_m_result" type="MeasurementResultValue" default="MeasurementResultValue.One">
+  The value returned when measuring a lost qubit.
+</ParamField>
+
+<ParamField path="rng_state" type="np.random.Generator">
+  Random number generator state for simulator.
+</ParamField>
+
+#### Methods
+
+##### task
+
+```python
+task(
+    kernel: ir.Method[Params, RetType],
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None
+) -> PyQrackSimulatorTask
+```
+
+Create a simulation task for the given kernel.
+
+<ParamField path="kernel" type="ir.Method" required>
+  The kernel method to run.
+</ParamField>
+
+<ParamField path="args" type="tuple" default="()">
+  Positional arguments to pass to the kernel method.
+</ParamField>
+
+<ParamField path="kwargs" type="dict | None" default="None">
+  Keyword arguments to pass to the kernel method.
+</ParamField>
+
+<ResponseField name="return" type="PyQrackSimulatorTask">
+  The task object used to track execution.
+</ResponseField>
+
+#### Example
+
+```python
+from bloqade import qasm2
+from bloqade.pyqrack import DynamicMemorySimulator
+from pyqrack.pauli import Pauli
+
+# Define a kernel
+@qasm2.main
+def main():
+    q = qasm2.qreg(2)
+    c = qasm2.creg(2)
+
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+
+    qasm2.measure(q, c)
+    return q
+
+# Create the simulator
+sim = DynamicMemorySimulator()
+
+# Execute the kernel
+qubits = sim.run(main)
+
+# Get state vector
+ket = sim.state_vector(main)
+
+# Compute Pauli expectation
+expectation_vals = sim.pauli_expectation([Pauli.PauliX, Pauli.PauliI], qubits)
+```
+
+---
+
+### PyQrackSimulatorTask
+
+```python
+from bloqade.pyqrack import PyQrackSimulatorTask
+```
+
+Task object for managing PyQrack simulation execution.
+
+<ParamField path="kernel" type="ir.Method" required>
+  The kernel method to execute.
+</ParamField>
+
+<ParamField path="args" type="tuple">
+  Positional arguments for the kernel.
+</ParamField>
+
+<ParamField path="kwargs" type="dict">
+  Keyword arguments for the kernel.
+</ParamField>
+
+<ParamField path="pyqrack_interp" type="PyQrackInterpreter">
+  The PyQrack interpreter instance.
+</ParamField>
+
+#### Methods
+
+##### run
+
+```python
+run() -> RetType
+```
+
+Execute the task and return the result.
+
+<ResponseField name="return" type="RetType">
+  The result of executing the kernel method.
+</ResponseField>
+
+##### state_vector
+
+```python
+state_vector() -> list[complex]
+```
+
+Runs the task and returns the state vector.
+
+<ResponseField name="return" type="list[complex]">
+  The state vector of the simulator.
+</ResponseField>
+
+##### qubits
+
+```python
+qubits() -> list[PyQrackQubit]
+```
+
+Returns the qubits in the simulator.
+
+<ResponseField name="return" type="list[PyQrackQubit]">
+  List of qubits in the simulator.
+</ResponseField>
+
+##### batch_run
+
+```python
+batch_run(shots: int = 1) -> dict[RetType, float]
+```
+
+Repeatedly run the task to collect statistics on outcomes.
+
+<ParamField path="shots" type="int" default="1">
+  The number of repetitions of the task.
+</ParamField>
+
+<ResponseField name="return" type="dict[RetType, float]">
+  A dictionary mapping outcomes to their estimated probabilities. The average converges to exact probabilities as shots approaches infinity.
+</ResponseField>
+
+##### batch_state
+
+```python
+batch_state(
+    shots: int = 1,
+    qubit_map: callable | None = None
+) -> QuantumState
+```
+
+Repeatedly run the task to extract the averaged quantum state.
+
+<ParamField path="shots" type="int" default="1">
+  The number of repetitions of the task.
+</ParamField>
+
+<ParamField path="qubit_map" type="callable | None" default="None">
+  An optional callable that takes the output of `self.run()` and extracts the qubits to be used for the quantum state. If None, all qubits in the simulator are used. Must have signature `qubit_map(output: RetType) -> list[PyQrackQubit]`.
+</ParamField>
+
+<ResponseField name="return" type="QuantumState">
+  The averaged quantum state as a density matrix, represented in its eigenbasis.
+</ResponseField>
+
+---
+
+## Types and Options
+
+### PyQrackOptions
+
+Configuration options for the QrackSimulator.
+
+<ParamField path="qubitCount" type="int" default="-1">
+  Number of qubits in the simulator. Set to -1 for dynamic allocation.
+</ParamField>
+
+<ParamField path="isTensorNetwork" type="bool" default="False">
+  Use tensor network simulation mode.
+</ParamField>
+
+<ParamField path="isSchmidtDecomposeMulti" type="bool" default="True">
+  Enable multi-qubit Schmidt decomposition.
+</ParamField>
+
+<ParamField path="isSchmidtDecompose" type="bool" default="True">
+  Enable Schmidt decomposition.
+</ParamField>
+
+<ParamField path="isStabilizerHybrid" type="bool" default="False">
+  Use stabilizer-hybrid simulation mode.
+</ParamField>
+
+<ParamField path="isBinaryDecisionTree" type="bool" default="False">
+  Use binary decision tree simulation mode.
+</ParamField>
+
+<ParamField path="isPaged" type="bool" default="True">
+  Enable paged memory allocation.
+</ParamField>
+
+<ParamField path="isCpuGpuHybrid" type="bool" default="True">
+  Enable CPU-GPU hybrid execution.
+</ParamField>
+
+<ParamField path="isOpenCL" type="bool" default="True">
+  Enable OpenCL acceleration.
+</ParamField>
+
+<Note>
+Certain combinations of options are not allowed:
+- `isBinaryDecisionTree` and `isStabilizerHybrid` cannot both be True
+- `isTensorNetwork` and `isBinaryDecisionTree` cannot both be True
+- `isTensorNetwork` and `isStabilizerHybrid` cannot both be True
+</Note>
+
+### QuantumState
+
+A representation of a quantum state as a density matrix.
+
+<ParamField path="eigenvalues" type="np.ndarray" required>
+  The non-zero eigenvalues of the density matrix (1D array).
+</ParamField>
+
+<ParamField path="eigenvectors" type="np.ndarray" required>
+  The corresponding eigenvectors of the density matrix (2D array), where `eigenvectors[:,i]` is the i-th eigenvector.
+</ParamField>
+
+The density matrix is represented as: ρ = Σᵢ eigenvalues[i] |eigenvectors[:,i]⟩⟨eigenvectors[:,i]|
+
+This representation is efficient for low-rank density matrices by only storing non-zero eigenvalues and their corresponding eigenvectors.
+
+<Note>
+Endianness is consistent with Cirq, where:
+- `eigenvectors[0,0]` corresponds to |00..000⟩
+- `eigenvectors[1,0]` corresponds to |00..001⟩
+- A flip of the LAST bit corresponds to applying PauliX to the FIRST qubit
+- A flip of the FIRST bit corresponds to applying PauliX to the LAST qubit
+</Note>
+
+---
+
+## Deprecated API
+
+### PyQrack (Target)
+
+<Warning>
+The `PyQrack` target class is deprecated and will be removed in a future release. Use `DynamicMemorySimulator` or `StackMemorySimulator` instead.
+</Warning>
+
+```python
+from bloqade.pyqrack import PyQrack
+
+target = PyQrack(min_qubits=2, dynamic_qubits=False)
+```
+
+<ParamField path="min_qubits" type="int" default="0">
+  Minimum number of qubits required for the simulator.
+</ParamField>
+
+<ParamField path="dynamic_qubits" type="bool" default="False">
+  Whether to use dynamic qubit allocation. Cannot be used with tensor network simulations.
+</ParamField>
+
+<ParamField path="pyqrack_options" type="PyQrackOptions">
+  Options to pass to the QrackSimulator object.
+</ParamField>

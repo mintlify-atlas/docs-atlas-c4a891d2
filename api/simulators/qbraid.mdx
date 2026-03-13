@@ -1,0 +1,293 @@
+---
+title: "qBraid Integration"
+description: "API reference for qBraid cloud simulator integration"
+---
+
+The qBraid integration enables submission of Bloqade kernels to the QuEra simulator hosted on qBraid's cloud platform.
+
+## qBraid Target
+
+### qBraid
+
+```python
+from bloqade.qbraid import qBraid
+
+target = qBraid(
+    allow_parallel=False,
+    allow_global=False,
+    provider=provider,
+    qelib1=True
+)
+```
+
+qBraid target that accepts a Bloqade kernel and submits it to the QuEra simulator hosted on qBraid. Returns a `QbraidJob` object for querying status and obtaining results.
+
+<ParamField path="allow_parallel" type="bool" default="False">
+  Allow parallel gates in the resulting QASM2 AST. If False and the input kernel uses parallel gates, they will be rewritten into uop gates.
+</ParamField>
+
+<ParamField path="allow_global" type="bool" default="False">
+  Allow global gates in the resulting QASM2 AST. If False and the input kernel uses global gates, they will be rewritten into parallel gates.
+  
+  If both `allow_parallel` and `allow_global` are False, the input kernel will be rewritten to use uop gates.
+</ParamField>
+
+<ParamField path="provider" type="QbraidProvider" required>
+  Qbraid-provided object to allow submission of the kernel to the QuEra simulator.
+</ParamField>
+
+<ParamField path="qelib1" type="bool" default="True">
+  Include the `include "qelib1.inc"` line in the resulting QASM2 AST that's submitted to qBraid.
+</ParamField>
+
+#### Methods
+
+##### emit
+
+```python
+emit(
+    method: ir.Method,
+    shots: Optional[int] = None,
+    tags: Optional[dict[str, str]] = None
+) -> Union[QbraidJob, list[QbraidJob]]
+```
+
+Submit the Bloqade kernel to the QuEra simulator on qBraid.
+
+<ParamField path="method" type="ir.Method" required>
+  The kernel to submit to qBraid.
+</ParamField>
+
+<ParamField path="shots" type="int | None" default="None">
+  Number of times to run the kernel.
+</ParamField>
+
+<ParamField path="tags" type="dict[str, str] | None" default="None">
+  A dictionary of tags to associate with the Job.
+</ParamField>
+
+<ResponseField name="return" type="QbraidJob | list[QbraidJob]">
+  An object you can query for the status of your submission as well as obtain simulator results from.
+</ResponseField>
+
+#### Example
+
+```python
+from bloqade import qasm2
+from bloqade.qbraid import qBraid
+from qbraid import QbraidProvider
+
+# Initialize provider
+provider = QbraidProvider(api_key="your_api_key")
+
+# Define a kernel
+@qasm2.main
+def bell_state():
+    q = qasm2.qreg(2)
+    c = qasm2.creg(2)
+    
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+    qasm2.measure(q, c)
+    
+    return c
+
+# Create qBraid target
+target = qBraid(provider=provider)
+
+# Submit job
+job = target.emit(bell_state, shots=1000, tags={"experiment": "bell_state"})
+
+# Query job status
+print(job.status())
+
+# Get results when complete
+results = job.result()
+```
+
+---
+
+## Noise Model Support
+
+### Lowering
+
+```python
+from bloqade.qbraid import Lowering
+
+lowering = Lowering()
+method = lowering.lower(
+    sym_name="noise_kernel",
+    noise_model=noise_model,
+    return_qreg=False
+)
+```
+
+Lower a noise model to a kernel method for execution.
+
+#### Methods
+
+##### lower
+
+```python
+lower(
+    sym_name: str,
+    noise_model: schema.NoiseModel,
+    return_qreg: bool = False
+) -> ir.Method
+```
+
+Lower the noise model to a method.
+
+<ParamField path="sym_name" type="str" required>
+  The name of the method to generate.
+</ParamField>
+
+<ParamField path="noise_model" type="schema.NoiseModel" required>
+  The noise model to lower.
+</ParamField>
+
+<ParamField path="return_qreg" type="bool" default="False">
+  Use the quantum register as the return value instead of the classical register.
+</ParamField>
+
+<ResponseField name="return" type="ir.Method">
+  The generated kirin method.
+</ResponseField>
+
+---
+
+## Simulation Results
+
+### QuEraSimulationResult
+
+```python
+from bloqade.qbraid import QuEraSimulationResult
+```
+
+Results of the QuEra hardware model simulation.
+
+<ParamField path="flair_visual_version" type="str">
+  The version of the Flair Visual package used to generate the simulation result.
+</ParamField>
+
+<ParamField path="counts" type="dict[str, int]">
+  The measurement bitstrings of the simulation.
+</ParamField>
+
+<ParamField path="logs" type="DataFrame">
+  Granular log events of what happened to each atom during the simulation.
+</ParamField>
+
+<ParamField path="atom_animation_state" type="AnimateQPUState">
+  Object used to play back atom trajectories and events during the simulation.
+</ParamField>
+
+<ParamField path="noise_model" type="NoiseModel">
+  The noise model used in the simulation.
+</ParamField>
+
+#### Methods
+
+##### from_json
+
+```python
+@classmethod
+from_json(json: dict) -> QuEraSimulationResult
+```
+
+Deserialize the object from a JSON serializable dictionary.
+
+<ParamField path="json" type="dict" required>
+  The JSON dictionary to deserialize.
+</ParamField>
+
+<ResponseField name="return" type="QuEraSimulationResult">
+  The deserialized simulation result.
+</ResponseField>
+
+##### to_json
+
+```python
+to_json() -> dict[str, Any]
+```
+
+Turn the object into a JSON serializable dictionary.
+
+<ResponseField name="return" type="dict[str, Any]">
+  The JSON-serializable dictionary.
+</ResponseField>
+
+##### animate
+
+```python
+animate(
+    dilation_rate: float = 0.05,
+    fps: int = 30,
+    gate_display_dilation: float = 1.0,
+    save_mpeg: bool = False,
+    filename: str = "vqpu_animation",
+    start_block: int = 0,
+    n_blocks: Optional[int] = None
+)
+```
+
+Animate the QPU state.
+
+<ParamField path="dilation_rate" type="float" default="0.05">
+  Conversion factor from the QPU time to animation time units. When `dilation_rate=1.0`, 1 μs of QPU exec time corresponds to 1 second of animation time.
+</ParamField>
+
+<ParamField path="fps" type="int" default="30">
+  Frames per second for the animation.
+</ParamField>
+
+<ParamField path="gate_display_dilation" type="float" default="1.0">
+  Relative dilation rate of a gate event. Higher values display gate events longer.
+</ParamField>
+
+<ParamField path="save_mpeg" type="bool" default="False">
+  Save the animation as an MPEG file.
+</ParamField>
+
+<ParamField path="filename" type="str" default="vqpu_animation">
+  The file name of the saved MPEG file. Ignored if `save_mpeg` is False.
+</ParamField>
+
+<ParamField path="start_block" type="int" default="0">
+  The start block to animate.
+</ParamField>
+
+<ParamField path="n_blocks" type="int | None" default="None">
+  Number of blocks to animate. When None, animate all blocks after `start_block`.
+</ParamField>
+
+<ResponseField name="return" type="matplotlib.animation.Animation">
+  The matplotlib animation object.
+</ResponseField>
+
+#### Example
+
+```python
+from bloqade.qbraid import QuEraSimulationResult
+
+# Assuming you have a job result
+job = target.emit(kernel, shots=1000)
+results = job.result()
+
+# Parse the result
+sim_result = QuEraSimulationResult.from_json(results)
+
+# Access counts
+print(sim_result.counts)
+
+# View logs
+print(sim_result.logs)
+
+# Animate the QPU state
+animation = sim_result.animate(
+    dilation_rate=0.1,
+    fps=30,
+    save_mpeg=True,
+    filename="my_simulation"
+)
+```

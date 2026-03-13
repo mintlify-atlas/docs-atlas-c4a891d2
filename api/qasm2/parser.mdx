@@ -1,0 +1,469 @@
+---
+title: 'Parser'
+description: 'Parse OpenQASM 2.0 code into AST structures'
+---
+
+## Overview
+
+The `bloqade.qasm2.parse` module provides functionality for parsing OpenQASM 2.0 code into an Abstract Syntax Tree (AST). The parser is built using the Lark parsing library and can handle QASM2 strings or files.
+
+## Main Functions
+
+### loads
+
+```python
+def loads(txt: str) -> ast.MainProgram
+```
+
+Parse a QASM2 string into an AST.
+
+<ParamField path="txt" type="str" required>
+  The QASM2 source code as a string.
+</ParamField>
+
+<ResponseField name="return" type="ast.MainProgram">
+  The parsed QASM2 program as an AST node.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade.qasm2 import parse
+
+qasm_code = """
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0], q[1];
+measure q -> c;
+"""
+
+ast = parse.loads(qasm_code)
+```
+
+### loadfile
+
+```python
+def loadfile(file: str | pathlib.Path) -> ast.MainProgram
+```
+
+Parse a QASM2 file into an AST.
+
+<ParamField path="file" type="str | pathlib.Path" required>
+  Path to the QASM2 file to load.
+</ParamField>
+
+<ResponseField name="return" type="ast.MainProgram">
+  The parsed QASM2 program as an AST node.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade.qasm2 import parse
+
+ast = parse.loadfile("circuit.qasm")
+```
+
+### pprint
+
+```python
+def pprint(
+    node: ast.Node,
+    *,
+    console: Console | None = None,
+    no_color: bool = False
+) -> None
+```
+
+Pretty-print a QASM2 AST node to the console.
+
+<ParamField path="node" type="ast.Node" required>
+  The AST node to print.
+</ParamField>
+
+<ParamField path="console" type="Console | None" default="None">
+  Optional Rich console for output. If None, creates a new console.
+</ParamField>
+
+<ParamField path="no_color" type="bool" default="False">
+  If True, disables colored output.
+</ParamField>
+
+**Example:**
+
+```python
+from bloqade.qasm2 import parse
+
+ast = parse.loads(qasm_code)
+parse.pprint(ast)
+```
+
+### spprint
+
+```python
+def spprint(
+    node: ast.Node,
+    *,
+    console: Console | None = None,
+    no_color: bool = False
+) -> str
+```
+
+Convert a QASM2 AST node to a formatted string.
+
+<ParamField path="node" type="ast.Node" required>
+  The AST node to convert to string.
+</ParamField>
+
+<ParamField path="console" type="Console | None" default="None">
+  Optional Rich console for formatting. If None, creates a new console.
+</ParamField>
+
+<ParamField path="no_color" type="bool" default="False">
+  If True, disables colored output.
+</ParamField>
+
+<ResponseField name="return" type="str">
+  The formatted string representation of the AST.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade.qasm2 import parse
+
+ast = parse.loads(qasm_code)
+formatted = parse.spprint(ast)
+print(formatted)
+```
+
+## AST Node Types
+
+The parser produces an AST composed of various node types defined in `bloqade.qasm2.parse.ast`.
+
+### Program Structure
+
+#### Node
+
+```python
+@dataclass
+class Node:
+    """Base class for all AST nodes."""
+    pass
+```
+
+#### MainProgram
+
+```python
+@dataclass
+class MainProgram(Node):
+    """Root node of a QASM2 program."""
+    header: Kirin | OPENQASM
+    statements: list[Statement]
+```
+
+<ParamField path="header" type="Kirin | OPENQASM">
+  The program header (version declaration).
+</ParamField>
+
+<ParamField path="statements" type="list[Statement]">
+  List of top-level statements in the program.
+</ParamField>
+
+#### Header Types
+
+```python
+@dataclass
+class OPENQASM(Header):
+    """OPENQASM version header."""
+    version: Version
+```
+
+```python
+@dataclass
+class Version(Node):
+    """Version number."""
+    major: int
+    minor: int
+```
+
+### Statements
+
+#### QReg
+
+```python
+@dataclass
+class QReg(Statement):
+    """Quantum register declaration."""
+    name: str
+    size: int
+```
+
+<ParamField path="name" type="str">
+  Name of the quantum register.
+</ParamField>
+
+<ParamField path="size" type="int">
+  Number of qubits in the register.
+</ParamField>
+
+#### CReg
+
+```python
+@dataclass
+class CReg(Statement):
+    """Classical register declaration."""
+    name: str
+    size: int
+```
+
+<ParamField path="name" type="str">
+  Name of the classical register.
+</ParamField>
+
+<ParamField path="size" type="int">
+  Number of bits in the register.
+</ParamField>
+
+#### Gate
+
+```python
+@dataclass
+class Gate(Statement):
+    """Custom gate definition."""
+    name: str
+    cparams: list[str]
+    qparams: list[str]
+    body: list[UOp | Barrier]
+```
+
+<ParamField path="name" type="str">
+  Name of the gate.
+</ParamField>
+
+<ParamField path="cparams" type="list[str]">
+  Classical (angle) parameters.
+</ParamField>
+
+<ParamField path="qparams" type="list[str]">
+  Quantum (qubit) parameters.
+</ParamField>
+
+<ParamField path="body" type="list[UOp | Barrier]">
+  Gate body operations.
+</ParamField>
+
+#### Measure
+
+```python
+@dataclass
+class Measure(QOp):
+    """Measurement operation."""
+    qarg: Bit | Name
+    carg: Bit | Name
+```
+
+<ParamField path="qarg" type="Bit | Name">
+  The qubit or qubit register to measure.
+</ParamField>
+
+<ParamField path="carg" type="Bit | Name">
+  The classical bit or register to store the result.
+</ParamField>
+
+#### IfStmt
+
+```python
+@dataclass
+class IfStmt(Statement):
+    """Conditional statement."""
+    cond: Cmp
+    body: list[QOp]
+```
+
+<ParamField path="cond" type="Cmp">
+  The condition to evaluate.
+</ParamField>
+
+<ParamField path="body" type="list[QOp]">
+  Operations to execute if condition is true.
+</ParamField>
+
+#### Barrier
+
+```python
+@dataclass
+class Barrier(Statement):
+    """Barrier instruction."""
+    qargs: list[Bit | Name]
+```
+
+<ParamField path="qargs" type="list[Bit | Name]">
+  Qubits to apply the barrier to.
+</ParamField>
+
+#### Include
+
+```python
+@dataclass
+class Include(Statement):
+    """Include directive."""
+    filename: str
+```
+
+<ParamField path="filename" type="str">
+  Name of the file to include (e.g., "qelib1.inc").
+</ParamField>
+
+### Expressions
+
+The parser supports various expression types for parameterized gates:
+
+- **Binary operations**: Addition, subtraction, multiplication, division, power
+- **Unary operations**: Negation
+- **Functions**: sin, cos, tan, exp, ln, sqrt
+- **Constants**: Integer, float, and pi
+
+### Addressing
+
+#### Name
+
+```python
+@dataclass
+class Name(Node):
+    """Reference to a named register."""
+    value: str
+```
+
+#### Bit
+
+```python
+@dataclass
+class Bit(Node):
+    """Reference to a specific qubit or classical bit."""
+    name: str
+    index: int
+```
+
+<ParamField path="name" type="str">
+  Name of the register.
+</ParamField>
+
+<ParamField path="index" type="int">
+  Index within the register.
+</ParamField>
+
+## Parser Implementation
+
+The parser uses Lark with LALR parsing:
+
+```python
+from lark import Lark
+
+qasm2_parser = Lark.open(
+    "qasm2.lark",
+    rel_to=__file__,
+    parser="lalr",
+    start="mainprogram"
+)
+```
+
+The grammar is defined in `qasm2.lark` and follows the OpenQASM 2.0 specification.
+
+## Visitor Pattern
+
+The module provides a `Visitor` class for traversing AST nodes:
+
+```python
+from bloqade.qasm2.parse import Visitor
+
+class MyVisitor(Visitor):
+    def visit_Gate(self, node):
+        print(f"Found gate: {node.name}")
+        # Continue traversal
+        self.generic_visit(node)
+
+visitor = MyVisitor()
+visitor.visit(ast)
+```
+
+## Build Process
+
+The `Build` class transforms Lark parse trees into typed AST nodes:
+
+```python
+from bloqade.qasm2.parse.build import Build
+
+builder = Build()
+# Used internally by loads()
+```
+
+## Example Usage
+
+### Parse and Inspect
+
+```python
+from bloqade.qasm2 import parse
+
+qasm_code = """
+OPENQASM 2.0;
+include "qelib1.inc";
+
+gate bell q0, q1 {
+  h q0;
+  cx q0, q1;
+}
+
+qreg q[2];
+creg c[2];
+bell q[0], q[1];
+measure q -> c;
+"""
+
+# Parse the code
+ast = parse.loads(qasm_code)
+
+# Access the AST structure
+print(f"Version: {ast.header.version.major}.{ast.header.version.minor}")
+for stmt in ast.statements:
+    if isinstance(stmt, parse.ast.Gate):
+        print(f"Gate definition: {stmt.name}")
+    elif isinstance(stmt, parse.ast.QReg):
+        print(f"Quantum register: {stmt.name}[{stmt.size}]")
+```
+
+### Convert to String
+
+```python
+from bloqade.qasm2 import parse
+
+ast = parse.loads(qasm_code)
+
+# Pretty print with colors
+parse.pprint(ast)
+
+# Get as string (no colors)
+qasm_str = parse.spprint(ast, no_color=True)
+```
+
+## Error Handling
+
+The parser raises exceptions for invalid QASM2 syntax:
+
+```python
+from bloqade.qasm2 import parse
+
+try:
+    ast = parse.loads("invalid qasm code")
+except Exception as e:
+    print(f"Parse error: {e}")
+```
+
+## See Also
+
+- [Emitter](/api/qasm2/emitter): Generate QASM2 from kernels
+- [Dialects](/api/qasm2/dialects): QASM2 dialect system
+- [Overview](/api/qasm2/overview): QASM2 module overview

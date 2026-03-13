@@ -1,0 +1,474 @@
+---
+title: Stim Dialect
+description: Quantum error correction and fast stabilizer circuit simulation
+---
+
+## Overview
+
+The Stim dialect provides integration with the [Stim quantum circuit simulator](https://github.com/quantumlib/Stim), which is optimized for simulating stabilizer circuits and quantum error correction codes. Stim excels at fast simulation of large-scale error correction experiments and provides specialized features for detector and observable annotations.
+
+## Key Features
+
+- **Fast stabilizer simulation**: Efficiently simulate millions of qubits and gates
+- **Error correction**: Built-in support for detectors and observables
+- **Noise models**: Comprehensive single and two-qubit error channels
+- **Pauli product measurements**: Measure stabilizers directly
+- **Record-based feedback**: Classical feedback using measurement records
+- **Compilation**: Compile from SQuIn or QASM2 to Stim
+- **Native Stim interop**: Export to `stim.Circuit` for use with Stim tools
+
+## Creating Stim Circuits
+
+### Basic Circuit
+
+```python
+from bloqade import stim
+
+@stim.main
+def simple_circuit():
+    # Single-qubit Clifford gates
+    stim.h((0,))      # Hadamard on qubit 0
+    stim.s((1,))      # S gate on qubit 1
+    stim.x((2,))      # X gate on qubit 2
+    
+    # Two-qubit gates
+    stim.cx((0,), (1,))  # CNOT: control=0, target=1
+    stim.cz((1,), (2,))  # CZ: control=1, target=2
+    
+    # Measurements
+    stim.mz(0.0, (0, 1, 2))  # Measure all in Z basis
+```
+
+### Gate Operations
+
+```python
+from bloqade import stim
+
+@stim.main  
+def clifford_gates():
+    # Single-qubit Clifford gates
+    stim.h((0,))          # Hadamard
+    stim.s((0,))          # S gate
+    stim.x((0,))          # Pauli-X
+    stim.y((0,))          # Pauli-Y
+    stim.z((0,))          # Pauli-Z
+    stim.sqrt_x((0,))     # √X
+    stim.sqrt_y((0,))     # √Y
+    stim.sqrt_z((0,))     # √Z (same as S)
+    
+    # With dagger flag
+    stim.s((0,), dagger=True)       # S†
+    stim.sqrt_x((0,), dagger=True)  # √X†
+    
+    # Two-qubit gates
+    stim.cx((0,), (1,))   # CNOT
+    stim.cy((0,), (1,))   # Controlled-Y
+    stim.cz((0,), (1,))   # Controlled-Z  
+    stim.swap((0, 1))     # SWAP qubits 0 and 1
+```
+
+### Measurements
+
+```python
+from bloqade import stim
+
+@stim.main
+def measurement_example():
+    # Prepare Bell pair
+    stim.h((0,))
+    stim.cx((0,), (1,))
+    
+    # Measure in different bases
+    stim.mz(0.0, (0, 1))    # Z-basis (computational)
+    stim.mx(0.0, (2,))      # X-basis
+    stim.my(0.0, (3,))      # Y-basis
+    
+    # Two-qubit basis measurements
+    stim.mxx(0.0, (4, 5))   # XX measurement
+    stim.myy(0.0, (4, 5))   # YY measurement
+    stim.mzz(0.0, (4, 5))   # ZZ measurement
+```
+
+### Pauli Product Measurements
+
+Measure arbitrary Pauli strings:
+
+```python
+from bloqade import stim
+
+@stim.main
+def pauli_measurements():
+    # Define Pauli strings
+    # Format: (paulis, flipped_signs, qubit_targets)
+    xxz = stim.pauli_string(
+        string=('X', 'X', 'Z'),
+        flipped=(False, False, False),
+        targets=(0, 1, 2)
+    )
+    
+    xzy = stim.pauli_string(
+        string=('X', 'Z', 'Y'),
+        flipped=(False, True, False),  # Z is negated
+        targets=(3, 4, 5)
+    )
+    
+    # Measure Pauli products
+    stim.mpp(0.0, (xxz, xzy))
+    
+    # Pauli string product gate (without measurement)
+    stim.spp((xxz,))
+```
+
+## Noise Models
+
+### Single-Qubit Noise
+
+```python
+from bloqade import stim
+
+@stim.main
+def single_qubit_noise():
+    # Apply H gate
+    stim.h((0,))
+    
+    # Single qubit errors
+    stim.x_error(0.001, (0,))  # Bit flip with 0.1% probability
+    stim.y_error(0.001, (0,))  # Y error
+    stim.z_error(0.001, (0,))  # Phase flip
+    
+    # Depolarizing noise
+    stim.depolarize1(0.01, (0, 1, 2))  # 1% depolarizing on qubits 0,1,2
+    
+    # General Pauli channel
+    stim.pauli_channel1(
+        px=0.01,   # X error rate
+        py=0.005,  # Y error rate
+        pz=0.01,   # Z error rate
+        targets=(0,)
+    )
+```
+
+### Two-Qubit Noise
+
+```python
+from bloqade import stim
+
+@stim.main
+def two_qubit_noise():
+    # Apply CNOT
+    stim.cx((0,), (1,))
+    
+    # Two-qubit depolarizing
+    stim.depolarize2(0.05, (0, 1))  # 5% two-qubit depolarizing
+    
+    # General two-qubit Pauli channel
+    stim.pauli_channel2(
+        pix=0.01, piy=0.01, piz=0.01,
+        pxi=0.01, pxx=0.001, pxy=0.001, pxz=0.001,
+        pyi=0.01, pyx=0.001, pyy=0.001, pyz=0.001,
+        pzi=0.01, pzx=0.001, pzy=0.001, pzz=0.001,
+        targets=(0, 1)
+    )
+```
+
+### Qubit Loss
+
+```python
+from bloqade import stim
+
+@stim.main
+def qubit_loss_example():
+    # Single qubit loss
+    stim.qubit_loss(
+        probs=(0.001,),  # 0.1% loss probability
+        targets=(0,)
+    )
+    
+    # Correlated qubit loss
+    stim.correlated_qubit_loss(
+        probs=(0.0, 0.001, 0.001, 0.002),  # P(none), P(0), P(1), P(both)
+        targets=(0, 1)
+    )
+```
+
+## Error Correction Features
+
+### Detectors
+
+Detectors mark stabilizer measurements for error detection:
+
+```python
+from bloqade import stim
+
+@stim.main
+def detector_example():
+    # Prepare ancilla
+    stim.h((0,))
+    stim.cx((0,), (1,))
+    
+    # Measure  
+    stim.mz(0.0, (0, 1))
+    
+    # Get measurement records (negative indices for recent measurements)
+    rec1 = stim.rec(-2)  # Second-to-last measurement
+    rec2 = stim.rec(-1)  # Last measurement
+    
+    # Define detector: XOR of measurements should be 0 for no error
+    stim.detector(
+        coord=(0, 0),         # Spatial coordinates for visualization
+        targets=(rec1, rec2)  # Measurement records to compare
+    )
+```
+
+### Observables
+
+Observables track logical qubit measurements:
+
+```python
+from bloqade import stim
+
+@stim.main
+def observable_example():
+    # Logical circuit
+    stim.h((0,))
+    stim.cx((0,), (1,))
+    stim.cx((0,), (2,))
+    
+    # Measure logical qubit
+    stim.mz(0.0, (0, 1, 2))
+    
+    # Track logical measurement
+    rec1 = stim.rec(-3)
+    rec2 = stim.rec(-2)  
+    rec3 = stim.rec(-1)
+    
+    # Observable index 0
+    stim.observable_include(
+        idx=0,
+        targets=(rec1, rec2, rec3)
+    )
+```
+
+### Reset Operations
+
+```python
+from bloqade import stim
+
+@stim.main
+def reset_example():
+    # X gate
+    stim.x((0,))
+    
+    # Reset to |0⟩ (Z basis)
+    stim.rz((0,))
+    
+    # Reset to |+⟩ (X basis)
+    stim.rx((1,))
+    
+    # Reset to |+i⟩ (Y basis)
+    stim.ry((2,))
+```
+
+## Auxiliary Features
+
+### Timing
+
+```python
+from bloqade import stim
+
+@stim.main
+def timing_example():
+    stim.h((0,))
+    stim.tick()  # Mark time boundary
+    stim.cx((0,), (1,))
+    stim.tick()
+    stim.mz(0.0, (0, 1))
+```
+
+### Qubit Coordinates
+
+Annotate qubit positions for visualization:
+
+```python
+from bloqade import stim
+
+@stim.main
+def coordinates_example():
+    # Set 2D coordinates for qubits
+    stim.qubit_coords((0, 0), 0)    # Qubit 0 at (0,0)
+    stim.qubit_coords((0, 1), 1)    # Qubit 1 at (0,1)
+    stim.qubit_coords((1, 0), 2)    # Qubit 2 at (1,0)
+    stim.qubit_coords((1, 1), 3)    # Qubit 3 at (1,1)
+    
+    # 3D coordinates
+    stim.qubit_coords((0, 0, 0), 4)
+```
+
+## Compiling to Stim
+
+### From SQuIn
+
+```python
+from bloqade import squin, stim, qubit
+
+@squin.kernel
+def squin_circuit():
+    q0 = qubit.qalloc()
+    q1 = qubit.qalloc()
+    squin.h(q0)
+    squin.cx(q0, q1)
+    qubit.measure(q0)
+    qubit.measure(q1)
+
+# Compile to Stim
+kernel = squin_circuit.lower()
+stim_circuit = stim.Circuit(kernel)
+
+# Now use native Stim API
+print(stim_circuit)
+sampler = stim_circuit.compile_sampler()
+samples = sampler.sample(shots=1000)
+```
+
+### From QASM2
+
+```python
+from bloqade import qasm2, squin, stim
+
+# Load QASM
+qasm_kernel = qasm2.loads('''
+OPENQASM 2.0;
+qreg q[2];
+h q[0];
+cx q[0], q[1];
+''')
+
+# QASM → SQuIn → Stim
+squin_kernel = squin.passes.qasm2_to_squin(qasm_kernel)
+stim_circuit = stim.Circuit(squin_kernel)
+```
+
+## Available Operations
+
+### Single-Qubit Gates
+
+```python
+stim.h(targets, dagger=False)
+stim.s(targets, dagger=False)
+stim.x(targets, dagger=False)
+stim.y(targets, dagger=False)
+stim.z(targets, dagger=False)
+stim.sqrt_x(targets, dagger=False)
+stim.sqrt_y(targets, dagger=False)
+stim.sqrt_z(targets, dagger=False)
+stim.identity(targets)
+```
+
+### Two-Qubit Gates
+
+```python
+stim.cx(controls, targets, dagger=False)
+stim.cy(controls, targets, dagger=False)
+stim.cz(controls, targets, dagger=False)
+stim.swap(targets, dagger=False)
+```
+
+### Measurements
+
+```python
+stim.mx(p, targets)      # X-basis
+stim.my(p, targets)      # Y-basis
+stim.mz(p, targets)      # Z-basis (computational)
+stim.mxx(p, targets)     # XX basis (pairs)
+stim.myy(p, targets)     # YY basis (pairs)
+stim.mzz(p, targets)     # ZZ basis (pairs)
+stim.mpp(p, targets)     # Pauli product
+```
+
+### Noise
+
+```python
+stim.x_error(p, targets)
+stim.y_error(p, targets)
+stim.z_error(p, targets)
+stim.depolarize1(p, targets)
+stim.depolarize2(p, targets)
+stim.pauli_channel1(px, py, pz, targets)
+stim.pauli_channel2(pix, piy, ..., targets)
+stim.qubit_loss(probs, targets)
+stim.correlated_qubit_loss(probs, targets)
+```
+
+### Error Correction
+
+```python
+stim.detector(coord, targets)
+stim.observable_include(idx, targets)
+stim.rec(id)                    # Get measurement record
+```
+
+### Auxiliary
+
+```python
+stim.tick()                     # Time boundary
+stim.qubit_coords(coord, target) # Spatial annotation
+stim.rx(targets)                # Reset to |+⟩
+stim.ry(targets)                # Reset to |+i⟩
+stim.rz(targets)                # Reset to |0⟩
+stim.pauli_string(string, flipped, targets)
+stim.spp(targets)               # Pauli string product gate
+```
+
+## Stim Circuit Integration
+
+The `stim.Circuit` class inherits from `stim.Circuit` in the Stim library:
+
+```python
+from bloqade import stim
+
+# Create circuit from kernel
+circuit = stim.Circuit(kernel)
+
+# Use Stim's native API
+print(circuit.num_qubits)
+print(circuit.num_measurements)
+
+# Sample from circuit
+sampler = circuit.compile_sampler()
+samples = sampler.sample(shots=10000)
+
+# Detector error model
+dem = circuit.detector_error_model()
+
+# Export to Stim format
+print(circuit.to_file("circuit.stim"))
+```
+
+For complete Stim API documentation, see the [Stim Python API reference](https://github.com/quantumlib/Stim/blob/main/doc/python_api_reference_vDev.md).
+
+## When to Use Stim
+
+<Check>Use Stim when you need to:</Check>
+
+- Simulate large-scale quantum error correction codes
+- Design and test stabilizer circuits efficiently
+- Annotate circuits with detectors and observables
+- Run Monte Carlo simulations of noisy circuits
+- Analyze logical error rates in error correction
+- Integrate with Stim's decoding and analysis tools
+- Generate detector error models for decoders
+
+<Warning>
+Stim only supports stabilizer operations (Clifford gates + measurements). Non-Clifford gates like T are not supported. Use QASM2 or Native dialects for universal quantum circuits.
+</Warning>
+
+## Related Dialects
+
+<CardGroup cols={2}>
+  <Card title="SQuIn Dialect" icon="layer-group" href="/dialects/squin">
+    Source dialect for Stim compilation
+  </Card>
+  <Card title="QASM2 Dialect" icon="code" href="/dialects/qasm2">
+    Convert QASM to Stim via SQuIn
+  </Card>
+</CardGroup>

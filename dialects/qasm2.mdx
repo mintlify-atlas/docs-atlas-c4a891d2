@@ -1,0 +1,336 @@
+---
+title: QASM2 Dialect
+description: OpenQASM 2.0 support for quantum circuit programming
+---
+
+## Overview
+
+The QASM2 dialect provides full OpenQASM 2.0 support in Bloqade, allowing you to write quantum circuits using the industry-standard QASM language. This dialect is ideal for interoperability with other quantum frameworks like Qiskit and enables portable circuit descriptions.
+
+## Key Features
+
+- Full OpenQASM 2.0 specification support
+- Load QASM from strings or files
+- Universal gate set (U3, CX, and derived gates)
+- Quantum and classical registers
+- Measurement operations
+- Mathematical expressions in gate parameters
+- Barrier and control flow operations
+
+## Loading QASM Code
+
+### From String
+
+```python
+from bloqade import qasm2
+
+# Load QASM from string
+kernel = qasm2.loads('''
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0], q[1];
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+''')
+```
+
+### From File
+
+```python
+from bloqade import qasm2
+import pathlib
+
+# Load from file
+kernel = qasm2.loadfile(
+    pathlib.Path("circuit.qasm"),
+    kernel_name="my_circuit"
+)
+```
+
+## Creating Circuits with Python API
+
+### Register Creation
+
+```python
+from bloqade import qasm2
+from bloqade.qasm2 import gate
+
+@gate
+def bell_pair():
+    # Create quantum and classical registers
+    q = qasm2.qreg(2)  # 2 qubits
+    c = qasm2.creg(2)  # 2 classical bits
+    
+    # Apply gates
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+    
+    # Measure
+    qasm2.measure(q[0], c[0])
+    qasm2.measure(q[1], c[1])
+```
+
+### Single-Qubit Gates
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate
+def single_qubit_gates():
+    q = qasm2.qreg(1)
+    
+    # Pauli gates
+    qasm2.x(q[0])  # Pauli-X
+    qasm2.y(q[0])  # Pauli-Y
+    qasm2.z(q[0])  # Pauli-Z
+    
+    # Hadamard
+    qasm2.h(q[0])
+    
+    # Phase gates
+    qasm2.s(q[0])    # S gate
+    qasm2.t(q[0])    # T gate
+    qasm2.sdg(q[0])  # S dagger
+    qasm2.tdg(q[0])  # T dagger
+    
+    # Square root gates
+    qasm2.sx(q[0])   # sqrt(X)
+    qasm2.sxdg(q[0]) # sqrt(X) dagger
+```
+
+### Rotation Gates
+
+```python
+import math
+from bloqade import qasm2
+
+@qasm2.gate
+def rotation_gates():
+    q = qasm2.qreg(1)
+    
+    # Rotation about X, Y, Z axes
+    qasm2.rx(q[0], math.pi/4)  # RX(π/4)
+    qasm2.ry(q[0], math.pi/2)  # RY(π/2)
+    qasm2.rz(q[0], math.pi)    # RZ(π)
+    
+    # Phase gate
+    qasm2.p(q[0], math.pi/8)
+    
+    # Universal single-qubit gates
+    qasm2.u1(q[0], math.pi/4)
+    qasm2.u2(q[0], 0, math.pi)
+    qasm2.u3(q[0], math.pi/2, 0, math.pi)
+```
+
+### Two-Qubit Gates
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate  
+def two_qubit_gates():
+    q = qasm2.qreg(2)
+    
+    # Basic controlled gates
+    qasm2.cx(q[0], q[1])  # CNOT
+    qasm2.cy(q[0], q[1])  # Controlled-Y
+    qasm2.cz(q[0], q[1])  # Controlled-Z
+    qasm2.ch(q[0], q[1])  # Controlled-H
+    
+    # Swap
+    qasm2.swap(q[0], q[1])
+    
+    # Controlled rotations
+    qasm2.crx(q[0], q[1], math.pi/2)
+    qasm2.cry(q[0], q[1], math.pi/2)
+    qasm2.crz(q[0], q[1], math.pi/2)
+    
+    # Two-qubit rotations
+    qasm2.rxx(q[0], q[1], math.pi/4)
+    qasm2.rzz(q[0], q[1], math.pi/4)
+```
+
+### Multi-Controlled Gates
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate
+def multi_controlled_gates():
+    q = qasm2.qreg(3)
+    
+    # Toffoli (CCX)
+    qasm2.ccx(q[0], q[1], q[2])
+    
+    # Fredkin (CSWAP)
+    qasm2.cswap(q[0], q[1], q[2])
+```
+
+## Mathematical Expressions
+
+QASM2 supports mathematical functions in gate parameters:
+
+```python
+from bloqade import qasm2
+import math
+
+@qasm2.gate
+def parametric_circuit():
+    q = qasm2.qreg(1)
+    
+    # Use mathematical functions
+    angle = qasm2.sin(math.pi/4)
+    qasm2.rx(q[0], angle)
+    
+    # Available functions:
+    # sin, cos, tan, exp, ln, sqrt
+    qasm2.ry(q[0], qasm2.cos(math.pi/3))
+    qasm2.rz(q[0], qasm2.exp(0.5))
+```
+
+## Inline QASM
+
+Embed raw QASM code within Python:
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate
+def hybrid_circuit():
+    q = qasm2.qreg(2)
+    
+    # Python API
+    qasm2.h(q[0])
+    
+    # Inline QASM
+    qasm2.inline("""
+    cx q[0], q[1];
+    rx(pi/4) q[1];
+    """)
+```
+
+## Barriers
+
+Barriers prevent optimization across circuit boundaries:
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate
+def circuit_with_barriers():
+    q = qasm2.qreg(3)
+    
+    qasm2.h(q[0])
+    qasm2.barrier((q[0], q[1], q[2]))  # Barrier across qubits
+    qasm2.cx(q[0], q[1])
+```
+
+## Measurements
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate
+def measurement_example():
+    q = qasm2.qreg(2)
+    c = qasm2.creg(2)
+    
+    # Prepare state
+    qasm2.h(q[0])
+    qasm2.cx(q[0], q[1])
+    
+    # Measure individual qubits
+    qasm2.measure(q[0], c[0])
+    qasm2.measure(q[1], c[1])
+    
+    # Or measure entire register
+    qasm2.measure(q, c)
+```
+
+## Reset Operations
+
+```python
+from bloqade import qasm2
+
+@qasm2.gate
+def reset_example():
+    q = qasm2.qreg(1)
+    
+    qasm2.x(q[0])      # Apply X gate
+    qasm2.reset(q[0])  # Reset to |0⟩
+    qasm2.h(q[0])      # Apply H gate
+```
+
+## Available Gates Reference
+
+### Single-Qubit Gates
+
+| Gate | Description | Parameters |
+|------|-------------|------------|
+| `h(q)` | Hadamard | - |
+| `x(q)` | Pauli-X | - |
+| `y(q)` | Pauli-Y | - |
+| `z(q)` | Pauli-Z | - |
+| `s(q)` | S gate (phase) | - |
+| `t(q)` | T gate | - |
+| `sdg(q)` | S dagger | - |
+| `tdg(q)` | T dagger | - |
+| `sx(q)` | sqrt(X) | - |
+| `sxdg(q)` | sqrt(X) dagger | - |
+| `rx(q, θ)` | X rotation | angle |
+| `ry(q, θ)` | Y rotation | angle |
+| `rz(q, θ)` | Z rotation | angle |
+| `p(q, λ)` | Phase gate | angle |
+| `u1(q, λ)` | U1 gate | λ |
+| `u2(q, φ, λ)` | U2 gate | φ, λ |
+| `u3(q, θ, φ, λ)` | U3 gate (universal) | θ, φ, λ |
+
+### Two-Qubit Gates
+
+| Gate | Description | Parameters |
+|------|-------------|------------|
+| `cx(c, t)` | CNOT | - |
+| `cy(c, t)` | Controlled-Y | - |
+| `cz(c, t)` | Controlled-Z | - |
+| `ch(c, t)` | Controlled-H | - |
+| `csx(c, t)` | Controlled-sqrt(X) | - |
+| `swap(q1, q2)` | SWAP | - |
+| `crx(c, t, θ)` | Controlled-RX | angle |
+| `cry(c, t, θ)` | Controlled-RY | angle |
+| `crz(c, t, θ)` | Controlled-RZ | angle |
+| `cp(c, t, λ)` | Controlled phase | angle |
+| `cu1(c, t, λ)` | Controlled U1 | λ |
+| `cu3(c, t, θ, φ, λ)` | Controlled U3 | θ, φ, λ |
+| `rxx(q1, q2, θ)` | XX rotation | angle |
+| `rzz(q1, q2, θ)` | ZZ rotation | angle |
+
+### Multi-Qubit Gates
+
+| Gate | Description |
+|------|-------------|
+| `ccx(c1, c2, t)` | Toffoli (CCX) |
+| `cswap(c, t1, t2)` | Fredkin (CSWAP) |
+
+## When to Use QASM2
+
+<Check>Use QASM2 when you need to:</Check>
+
+- Import circuits from Qiskit or other QASM-compatible frameworks
+- Share circuits using an industry-standard format
+- Work with universal gate sets and arbitrary rotations
+- Prototype algorithms with familiar gate operations
+- Interface with existing QASM tooling and libraries
+
+## Related Dialects
+
+<CardGroup cols={2}>
+  <Card title="SQuIn Dialect" icon="layer-group" href="/dialects/squin">
+    For stabilizer circuits with noise modeling
+  </Card>
+  <Card title="Native Dialect" icon="microchip" href="/dialects/native">
+    For hardware-native operations
+  </Card>
+</CardGroup>

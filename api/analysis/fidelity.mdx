@@ -1,0 +1,300 @@
+---
+title: "Fidelity Analysis"
+description: "Track gate fidelities and qubit survival probabilities in quantum circuits"
+icon: "chart-line"
+---
+
+## Overview
+
+The fidelity analysis module provides tools to track and analyze the fidelity of quantum circuits, including gate operation fidelities and qubit survival probabilities. This is essential for understanding the impact of noise and errors on quantum computations.
+
+## FidelityRange
+
+<ParamField path="FidelityRange" type="dataclass">
+  Represents the range of fidelity for a qubit as a pair of (min, max) values.
+</ParamField>
+
+### Fields
+
+<ParamField path="min" type="float" required>
+  Minimum fidelity value in the range
+</ParamField>
+
+<ParamField path="max" type="float" required>
+  Maximum fidelity value in the range
+</ParamField>
+
+```python
+from bloqade.analysis.fidelity import FidelityRange
+
+@dataclass
+class FidelityRange:
+    """Range of fidelity for a qubit as pair of (min, max) values"""
+    min: float
+    max: float
+```
+
+## FidelityAnalysis
+
+<ParamField path="FidelityAnalysis" type="class">
+  Analysis pass that tracks the global addresses of qubits and wires along with their fidelity ranges. Extends `AddressAnalysis` to combine address tracking with fidelity analysis.
+</ParamField>
+
+### Class Definition
+
+```python
+from bloqade.analysis.fidelity import FidelityAnalysis
+
+@dataclass
+class FidelityAnalysis(AddressAnalysis):
+    """
+    This analysis pass can be used to track the global addresses of qubits 
+    and wires along with fidelity information.
+    """
+```
+
+### Properties
+
+<ParamField path="gate_fidelities" type="list[FidelityRange]">
+  Gate fidelities of each qubit as (min, max) pairs to provide a range. This list is automatically extended as new qubits are allocated.
+</ParamField>
+
+<ParamField path="qubit_survival_fidelities" type="list[FidelityRange]">
+  Qubit survival fidelity given as (min, max) pairs. Tracks the probability that qubits remain in a valid quantum state.
+</ParamField>
+
+<ParamField path="next_address" type="int">
+  The next available qubit address. Setting this property automatically extends fidelity lists to match the qubit count.
+</ParamField>
+
+<ParamField path="qubit_count" type="int" readonly>
+  Total number of qubits tracked by the analysis.
+</ParamField>
+
+### Methods
+
+#### extend_fidelities()
+
+<ParamField path="extend_fidelities" type="method">
+  Extend both fidelity lists so their length matches the number of qubits.
+</ParamField>
+
+```python
+def extend_fidelities(self):
+    """Extend both fidelity lists so their length matches the number of qubits"""
+    self.extend_fidelity(self.gate_fidelities)
+    self.extend_fidelity(self.qubit_survival_fidelities)
+```
+
+#### extend_fidelity()
+
+<ParamField path="extend_fidelity" type="method">
+  Extend a specific fidelity list to match the number of qubits.
+</ParamField>
+
+**Parameters**
+
+<ParamField path="fidelities" type="list[FidelityRange]" required>
+  The fidelity list to extend
+</ParamField>
+
+```python
+def extend_fidelity(self, fidelities: list[FidelityRange]):
+    """Extend a list of fidelities so its length matches the number of qubits"""
+    n = self.qubit_count
+    fidelities.extend([FidelityRange(1.0, 1.0) for _ in range(n - len(fidelities))])
+```
+
+#### reset_fidelities()
+
+<ParamField path="reset_fidelities" type="method">
+  Reset fidelities to unity (1.0, 1.0) for all qubits. Useful when entering new branches in control flow.
+</ParamField>
+
+```python
+def reset_fidelities(self):
+    """Reset fidelities to unity for all qubits"""
+    self.gate_fidelities = [
+        FidelityRange(1.0, 1.0) for _ in range(self.qubit_count)
+    ]
+    self.qubit_survival_fidelities = [
+        FidelityRange(1.0, 1.0) for _ in range(self.qubit_count)
+    ]
+```
+
+#### update_fidelities()
+
+<ParamField path="update_fidelities" type="staticmethod">
+  Update fidelity ranges by multiplying both min and max values by a given fidelity factor.
+</ParamField>
+
+**Parameters**
+
+<ParamField path="fidelities" type="list[FidelityRange]" required>
+  The list of fidelity ranges to update
+</ParamField>
+
+<ParamField path="fidelity" type="float" required>
+  The fidelity factor to multiply (typically between 0.0 and 1.0)
+</ParamField>
+
+<ParamField path="addresses" type="AddressReg" required>
+  The register of qubit addresses to update
+</ParamField>
+
+```python
+@staticmethod
+def update_fidelities(
+    fidelities: list[FidelityRange], 
+    fidelity: float, 
+    addresses: AddressReg
+):
+    """Update both (min, max) values for specified addresses"""
+    for idx in addresses.data:
+        fidelities[idx].min *= fidelity
+        fidelities[idx].max *= fidelity
+```
+
+#### update_branched_fidelities()
+
+<ParamField path="update_branched_fidelities" type="method">
+  Update fidelity (min, max) values after evaluating differing branches such as IfElse control flow. Takes the minimum of minimums and maximum of maximums across branches.
+</ParamField>
+
+**Parameters**
+
+<ParamField path="fidelities" type="list[FidelityRange]" required>
+  The output fidelity list to update
+</ParamField>
+
+<ParamField path="current_fidelities" type="list[FidelityRange]" required>
+  The fidelities before entering the branches
+</ParamField>
+
+<ParamField path="then_fidelities" type="list[FidelityRange]" required>
+  The fidelities from the "then" branch
+</ParamField>
+
+<ParamField path="else_fidelities" type="list[FidelityRange]" required>
+  The fidelities from the "else" branch
+</ParamField>
+
+```python
+def update_branched_fidelities(
+    self,
+    fidelities: list[FidelityRange],
+    current_fidelities: list[FidelityRange],
+    then_fidelities: list[FidelityRange],
+    else_fidelities: list[FidelityRange],
+):
+    """Update fidelity (min, max) values after evaluating differing branches"""
+    # Ensure all lists have the same length
+    map(
+        self.extend_fidelity,
+        (fidelities, current_fidelities, then_fidelities, else_fidelities),
+    )
+    
+    # Update min/max accordingly
+    for fid, current_fid, then_fid, else_fid in zip(
+        fidelities, current_fidelities, then_fidelities, else_fidelities
+    ):
+        fid.min = current_fid.min * min(then_fid.min, else_fid.min)
+        fid.max = current_fid.max * max(then_fid.max, else_fid.max)
+```
+
+### Usage Example
+
+```python
+from bloqade import squin
+from bloqade.analysis.fidelity import FidelityAnalysis
+
+# Define a quantum circuit with noise
+@squin.kernel
+def main():
+    q = squin.qalloc(1)
+    squin.x(q[0])
+    squin.depolarize(0.1, q[0])  # 10% depolarizing noise
+    return q
+
+# Run fidelity analysis
+fid_analysis = FidelityAnalysis(main.dialects)
+fid_analysis.run(main)
+
+# Access results
+gate_fidelities = fid_analysis.gate_fidelities
+qubit_survival_probs = fid_analysis.qubit_survival_fidelities
+
+print(f"Gate fidelities: {gate_fidelities}")
+print(f"Survival probabilities: {qubit_survival_probs}")
+print(f"Total qubits: {fid_analysis.qubit_count}")
+```
+
+### Multi-Qubit Example
+
+```python
+from bloqade import squin
+from bloqade.analysis.fidelity import FidelityAnalysis
+
+@squin.kernel
+def bell_state():
+    q = squin.qalloc(2)
+    squin.h(q[0])
+    squin.depolarize(0.05, q[0])  # 5% noise on first qubit
+    squin.cnot(q[0], q[1])
+    squin.depolarize(0.1, q[1])   # 10% noise on second qubit
+    return q
+
+# Analyze the circuit
+fid_analysis = FidelityAnalysis(bell_state.dialects)
+fid_analysis.run(bell_state)
+
+for i, (gate_fid, survival_fid) in enumerate(
+    zip(fid_analysis.gate_fidelities, fid_analysis.qubit_survival_fidelities)
+):
+    print(f"Qubit {i}:")
+    print(f"  Gate fidelity range: [{gate_fid.min:.4f}, {gate_fid.max:.4f}]")
+    print(f"  Survival range: [{survival_fid.min:.4f}, {survival_fid.max:.4f}]")
+```
+
+## Analysis Keys
+
+<ParamField path="keys" type="tuple[str, ...]">
+  The analysis keys used for caching and identification: `("circuit.fidelity", "qubit.address")`
+</ParamField>
+
+## Implementation Details
+
+### Branching Control Flow
+
+The fidelity analysis handles branching control flow (like `if-else` statements) specially:
+
+1. Store current fidelities before entering branches
+2. Reset fidelities to unity for each branch
+3. Evaluate each branch independently
+4. Combine results by taking:
+   - Minimum of branch minimums for the `min` value
+   - Maximum of branch maximums for the `max` value
+5. Multiply by the pre-branch fidelities
+
+This approach provides conservative bounds on circuit fidelity when the control flow path is not known at compile time.
+
+### Fidelity Initialization
+
+All qubits start with perfect fidelity `FidelityRange(1.0, 1.0)`. As gates and noise channels are applied, the fidelity ranges are updated accordingly.
+
+## Related APIs
+
+<CardGroup cols={2}>
+  <Card title="Validation" icon="shield-check" href="/api/analysis/validation">
+    Validate circuit correctness
+  </Card>
+  <Card title="Squin Gates" icon="microchip" href="/api/squin/gates">
+    Gate operations for circuits
+  </Card>
+  <Card title="Noise Models" icon="wave-pulse" href="/api/squin/noise">
+    Apply noise channels to circuits
+  </Card>
+  <Card title="Analysis Guide" icon="book" href="/guides/analysis">
+    Learn more about circuit analysis
+  </Card>
+</CardGroup>

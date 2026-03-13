@@ -1,0 +1,398 @@
+---
+title: SQuIn Dialect
+description: Stabilizer Quantum Instruction set for efficient simulation and analysis
+---
+
+## Overview
+
+SQuIn (Stabilizer Quantum Instruction set) is Bloqade's dialect for working with stabilizer circuits. It provides efficient operations for Clifford gates, measurements, and noise modeling. SQuIn is optimized for stabilizer state simulation and supports advanced features like broadcast operations and fidelity analysis.
+
+## Key Features
+
+- **Clifford gate set**: H, S, T, X, Y, Z, and their adjoints
+- **Controlled operations**: CX, CY, CZ gates
+- **Rotation gates**: RX, RY, RZ, U3
+- **Broadcast operations**: Apply gates to multiple qubits efficiently
+- **Noise modeling**: Depolarization, bit flip, phase damping, and custom Pauli channels
+- **Measurement operations**: Single-qubit and joint measurements
+- **Qubit management**: Allocate, reset, and track qubit states
+- **Fidelity analysis**: Built-in analysis for circuit fidelity
+
+## Basic Usage
+
+### Single Qubit Operations
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def single_qubit_gates():
+    q = qubit.qalloc()
+    
+    # Clifford gates
+    squin.h(q)  # Hadamard
+    squin.s(q)  # S gate
+    squin.t(q)  # T gate
+    
+    # Pauli gates
+    squin.x(q)  # Pauli-X
+    squin.y(q)  # Pauli-Y  
+    squin.z(q)  # Pauli-Z
+    
+    # Square root gates
+    squin.sqrt_x(q)
+    squin.sqrt_y(q)
+    squin.sqrt_z(q)
+    
+    # Adjoint gates
+    squin.s_adj(q)
+    squin.t_adj(q)
+    squin.sqrt_x_adj(q)
+    squin.sqrt_y_adj(q)
+```
+
+### Rotation Gates
+
+```python
+import math
+from bloqade import squin, qubit
+
+@squin.kernel
+def rotation_gates():
+    q = qubit.qalloc()
+    
+    # Single-qubit rotations
+    squin.rx(math.pi/4, q)  # RX rotation
+    squin.ry(math.pi/2, q)  # RY rotation
+    squin.rz(math.pi, q)    # RZ rotation
+    
+    # Universal single-qubit gate
+    squin.u3(
+        theta=math.pi/2,
+        phi=0,
+        lam=math.pi,
+        qubit=q
+    )
+    
+    # Phase shift on |1⟩ state
+    squin.shift(math.pi/4, q)
+```
+
+### Two-Qubit Gates
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def two_qubit_gates():
+    control = qubit.qalloc()
+    target = qubit.qalloc()
+    
+    # Controlled Pauli gates
+    squin.cx(control, target)  # CNOT
+    squin.cy(control, target)  # Controlled-Y
+    squin.cz(control, target)  # Controlled-Z
+```
+
+### Phased XZ Gate
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def phased_xz_example():
+    q = qubit.qalloc()
+    
+    # PhasedXZ gate: combines X and Z rotations
+    squin.phased_xz(
+        x_rad=1.5,           # X rotation angle
+        z_rad=0.5,           # Z rotation angle  
+        axis_phase_rad=0.2,  # XY plane phase
+        qubit=q
+    )
+```
+
+## Broadcast Operations
+
+Apply gates to multiple qubits simultaneously:
+
+```python
+from bloqade import squin, qubit
+from kirin.dialects import ilist
+
+@squin.kernel
+def broadcast_gates():
+    # Allocate multiple qubits
+    qubits = [qubit.qalloc() for _ in range(3)]
+    qubit_list = ilist.IList(qubits)
+    
+    # Apply H to all qubits at once
+    squin.broadcast.h(qubit_list)
+    
+    # Apply RX rotation to all qubits
+    squin.broadcast.rx(1.57, qubit_list)
+    
+    # Apply noise to all qubits
+    squin.broadcast.depolarize(0.01, qubit_list)
+```
+
+## Qubit Management
+
+### Allocating Qubits
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def qubit_allocation():
+    # Allocate a single qubit
+    q1 = qubit.qalloc()
+    
+    # Get qubit ID
+    qid = qubit.get_qubit_id(q1)
+    
+    # Reset qubit to |0⟩
+    qubit.reset(q1)
+```
+
+### Measurements
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def measurement_example():
+    q = qubit.qalloc()
+    
+    # Prepare superposition
+    squin.h(q)
+    
+    # Measure in computational basis
+    result = qubit.measure(q)
+    
+    # Get measurement ID
+    mid = qubit.get_measurement_id(result)
+    
+    # Check measurement outcomes
+    if qubit.is_zero(result):
+        squin.x(q)
+    elif qubit.is_one(result):
+        squin.z(q)
+    
+    # Check for qubit loss
+    if qubit.is_lost(result):
+        # Handle lost qubit
+        pass
+```
+
+## Noise Models
+
+### Single-Qubit Noise
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def single_qubit_noise():
+    q = qubit.qalloc()
+    
+    # Bit flip noise
+    squin.bit_flip(probability=0.01, qubit=q)
+    
+    # Depolarizing noise
+    squin.depolarize(probability=0.02, qubit=q)
+    
+    # Pauli channel: X, Y, Z errors
+    squin.single_qubit_pauli_channel(
+        px=0.01,  # X error probability
+        py=0.01,  # Y error probability
+        pz=0.01,  # Z error probability
+        qubit=q
+    )
+    
+    # Qubit loss
+    squin.qubit_loss(
+        p_loss=0.001,
+        qubit=q
+    )
+```
+
+### Two-Qubit Noise
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def two_qubit_noise():
+    q1 = qubit.qalloc()
+    q2 = qubit.qalloc()
+    
+    # Apply CX gate
+    squin.cx(q1, q2)
+    
+    # Two-qubit depolarizing noise
+    squin.depolarize2(
+        probability=0.05,
+        control=q1,
+        target=q2
+    )
+    
+    # General two-qubit Pauli channel
+    squin.two_qubit_pauli_channel(
+        pii=0.9,   # Identity on both
+        pix=0.01,  # I⊗X error
+        piy=0.01,  # I⊗Y error
+        # ... all 16 Pauli combinations
+        qubits=(q1, q2)
+    )
+    
+    # Correlated qubit loss
+    squin.correlated_qubit_loss(
+        p_loss=0.002,
+        qubits=(q1, q2)
+    )
+```
+
+## Detectors and Observables
+
+Annotate circuits for error correction:
+
+```python
+from bloqade import squin, qubit
+
+@squin.kernel
+def error_correction_circuit():
+    # Allocate qubits
+    data = qubit.qalloc()
+    ancilla1 = qubit.qalloc()
+    ancilla2 = qubit.qalloc()
+    
+    # Syndrome extraction
+    squin.cx(data, ancilla1)
+    squin.cx(data, ancilla2)
+    
+    # Measure ancillas
+    m1 = qubit.measure(ancilla1)
+    m2 = qubit.measure(ancilla2)
+    
+    # Set detector (marks stabilizer measurement)
+    squin.set_detector([m1, m2], coords=[0, 0])
+    
+    # Set observable (logical qubit measurement)
+    final_measure = qubit.measure(data)
+    squin.set_observable([final_measure], index=0)
+```
+
+## Fidelity Analysis
+
+```python
+from bloqade import squin
+from bloqade.squin.analysis.fidelity import calculate_fidelity
+
+@squin.kernel
+def noisy_circuit():
+    q = qubit.qalloc()
+    squin.h(q)
+    squin.depolarize(0.01, q)
+    squin.x(q)
+    return q
+
+# Analyze circuit fidelity
+kernel = noisy_circuit.lower()
+fidelity = calculate_fidelity(kernel)
+print(f"Circuit fidelity: {fidelity}")
+```
+
+## Converting from QASM2
+
+```python
+from bloqade import qasm2, squin
+
+# Load QASM circuit
+qasm_kernel = qasm2.loads('''
+OPENQASM 2.0;
+qreg q[2];
+h q[0];
+cx q[0], q[1];
+''')
+
+# Convert to SQuIn
+squin_kernel = squin.passes.qasm2_to_squin(qasm_kernel)
+```
+
+## Available Operations Reference
+
+### Single-Qubit Clifford Gates
+
+```python
+squin.h(q)           # Hadamard
+squin.s(q)           # S gate  
+squin.s_adj(q)       # S dagger
+squin.x(q)           # Pauli-X
+squin.y(q)           # Pauli-Y
+squin.z(q)           # Pauli-Z
+squin.sqrt_x(q)      # √X
+squin.sqrt_y(q)      # √Y
+squin.sqrt_z(q)      # √Z (same as S)
+squin.sqrt_x_adj(q)  # √X†
+squin.sqrt_y_adj(q)  # √Y†
+```
+
+### Non-Clifford Gates
+
+```python
+squin.t(q)           # T gate
+squin.t_adj(q)       # T dagger
+squin.rx(angle, q)   # X rotation
+squin.ry(angle, q)   # Y rotation
+squin.rz(angle, q)   # Z rotation
+squin.shift(angle, q)        # Phase shift
+squin.u3(θ, φ, λ, q)         # Universal gate
+squin.phased_xz(x, z, φ, q)  # PhasedXZ
+```
+
+### Two-Qubit Gates
+
+```python
+squin.cx(control, target)  # CNOT
+squin.cy(control, target)  # Controlled-Y
+squin.cz(control, target)  # Controlled-Z
+```
+
+### Noise Operations
+
+```python
+squin.bit_flip(p, q)
+squin.depolarize(p, q)
+squin.depolarize2(p, q1, q2)
+squin.qubit_loss(p, q)
+squin.correlated_qubit_loss(p, (q1, q2))
+squin.single_qubit_pauli_channel(px, py, pz, q)
+squin.two_qubit_pauli_channel(pii, pix, ..., (q1, q2))
+```
+
+## When to Use SQuIn
+
+<Check>Use SQuIn when you need to:</Check>
+
+- Simulate stabilizer circuits efficiently
+- Model realistic noise in quantum circuits
+- Analyze circuit fidelity and error propagation
+- Work with Clifford gates and measurements
+- Prepare for conversion to Stim for error correction
+- Prototype algorithms with noise considerations
+
+<Warning>
+SQuIn is optimized for stabilizer operations. For non-Clifford gates (T, rotations), consider using QASM2 or Native dialects for better performance.
+</Warning>
+
+## Related Dialects
+
+<CardGroup cols={2}>
+  <Card title="QASM2 Dialect" icon="code" href="/dialects/qasm2">
+    Convert from QASM to SQuIn
+  </Card>
+  <Card title="Stim Dialect" icon="chart-line" href="/dialects/stim">
+    Convert SQuIn to Stim for error correction
+  </Card>
+</CardGroup>

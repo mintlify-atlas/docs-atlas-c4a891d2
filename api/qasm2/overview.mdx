@@ -1,0 +1,282 @@
+---
+title: 'QASM2 Overview'
+description: 'OpenQASM 2.0 support for Bloqade circuits'
+---
+
+## Overview
+
+The `bloqade.qasm2` module provides comprehensive support for working with OpenQASM 2.0 quantum circuits in Bloqade. It includes functionality for parsing QASM2 code, converting Bloqade kernels to QASM2, and supporting various QASM2 dialects and extensions.
+
+## Key Features
+
+- **Parsing**: Load QASM2 from strings or files
+- **Emission**: Convert Bloqade kernels to QASM2 AST and strings
+- **Dialects**: Support for core gates, expressions, parallel operations, and noise models
+- **Type System**: Quantum and classical register types
+- **Extensibility**: Custom gate definitions and inline QASM
+
+## Main Functions
+
+### loads
+
+```python
+def loads(
+    qasm: str,
+    *,
+    kernel_name: str = "main",
+    dialects: ir.DialectGroup | None = None,
+    returns: str | None = None,
+    globals: dict[str, Any] | None = None,
+    file: str | None = None,
+    lineno_offset: int = 0,
+    col_offset: int = 0,
+    compactify: bool = True,
+) -> ir.Method[[], None]
+```
+
+Loads a QASM2 string and returns the corresponding kernel object.
+
+<ParamField path="qasm" type="str" required>
+  The QASM2 string to load.
+</ParamField>
+
+<ParamField path="kernel_name" type="str" default="main">
+  The name of the kernel to load.
+</ParamField>
+
+<ParamField path="dialects" type="ir.DialectGroup | None" default="None">
+  The dialects to use. Defaults to `qasm2.main`.
+</ParamField>
+
+<ParamField path="returns" type="str | None" default="None">
+  The return type of the kernel.
+</ParamField>
+
+<ParamField path="globals" type="dict[str, Any] | None" default="None">
+  The global variables to use.
+</ParamField>
+
+<ParamField path="file" type="str | None" default="None">
+  The file name for error reporting.
+</ParamField>
+
+<ParamField path="lineno_offset" type="int" default="0">
+  The line number offset for error reporting.
+</ParamField>
+
+<ParamField path="col_offset" type="int" default="0">
+  The column number offset for error reporting.
+</ParamField>
+
+<ParamField path="compactify" type="bool" default="True">
+  Whether to compactify the output.
+</ParamField>
+
+<ResponseField name="return" type="ir.Method[[], None]">
+  The Bloqade kernel method object.
+</ResponseField>
+
+**Example:**
+
+```python
+from bloqade import qasm2
+
+method = qasm2.loads('''
+OPENQASM 2.0;
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0], q[1];
+measure q[0] -> c[0];
+''')
+```
+
+### loadfile
+
+```python
+def loadfile(
+    qasm_file: str | pathlib.Path,
+    *,
+    kernel_name: str = "main",
+    dialects: ir.DialectGroup | None = None,
+    returns: str | None = None,
+    globals: dict[str, Any] | None = None,
+    file: str | None = None,
+    lineno_offset: int = 0,
+    col_offset: int = 0,
+    compactify: bool = True,
+) -> ir.Method[[], None]
+```
+
+Loads a QASM2 file and returns the corresponding kernel object.
+
+<ParamField path="qasm_file" type="str | pathlib.Path" required>
+  The QASM2 file to load.
+</ParamField>
+
+<ParamField path="kernel_name" type="str" default="main">
+  The name of the kernel to load.
+</ParamField>
+
+<ParamField path="dialects" type="ir.DialectGroup | None" default="None">
+  The dialects to use. Defaults to `qasm2.main`.
+</ParamField>
+
+<ParamField path="returns" type="str | None" default="None">
+  The return type of the kernel.
+</ParamField>
+
+<ParamField path="globals" type="dict[str, Any] | None" default="None">
+  The global variables to use.
+</ParamField>
+
+<ParamField path="file" type="str | None" default="None">
+  The file name for error reporting.
+</ParamField>
+
+<ParamField path="lineno_offset" type="int" default="0">
+  The line number offset for error reporting.
+</ParamField>
+
+<ParamField path="col_offset" type="int" default="0">
+  The column number offset for error reporting.
+</ParamField>
+
+<ParamField path="compactify" type="bool" default="True">
+  Whether to compactify the output.
+</ParamField>
+
+<ResponseField name="return" type="ir.Method[[], None]">
+  The Bloqade kernel method object.
+</ResponseField>
+
+## Types
+
+### Qubit
+
+Runtime representation of a qubit. Re-exported from `bloqade.types`.
+
+### Bit
+
+Runtime representation of a classical bit.
+
+### QReg
+
+Type alias for quantum register: `IList[Qubit, Any]`
+
+A quantum register containing multiple qubits.
+
+### CReg
+
+Runtime representation of a classical register.
+
+**Methods:**
+
+- `__getitem__(index) -> Bit`: Get a classical bit at the specified index (only available within kernels).
+
+### QubitType
+
+Kirin type for a qubit.
+
+### BitType
+
+Kirin type for a classical bit.
+
+### QRegType
+
+Kirin type for a quantum register: `IListType[QubitType, Any]`
+
+### CRegType
+
+Kirin type for a classical register.
+
+## Wrapper Functions
+
+The module provides high-level wrapper functions for common QASM2 operations:
+
+### Register Operations
+
+- `qreg(n_qubits: int) -> QReg`: Create a quantum register
+- `creg(n_bits: int) -> CReg`: Create a classical register
+
+### Core Operations
+
+- `reset(qarg: Qubit) -> None`: Reset a qubit to |0⟩
+- `measure(qarg: Qubit, cbit: Bit) -> None`: Measure a qubit into a classical bit
+- `measure(qreg: QReg, creg: CReg) -> None`: Measure a quantum register into a classical register
+
+### Single-Qubit Gates
+
+- `h(qarg: Qubit) -> None`: Hadamard gate
+- `x(qarg: Qubit) -> None`: Pauli-X gate
+- `y(qarg: Qubit) -> None`: Pauli-Y gate
+- `z(qarg: Qubit) -> None`: Pauli-Z gate
+- `s(qarg: Qubit) -> None`: S gate
+- `sdg(qarg: Qubit) -> None`: S-dagger gate
+- `t(qarg: Qubit) -> None`: T gate
+- `tdg(qarg: Qubit) -> None`: T-dagger gate
+- `sx(qarg: Qubit) -> None`: Sqrt(X) gate
+- `sxdg(qarg: Qubit) -> None`: Sqrt(X)-dagger gate
+- `id(qarg: Qubit) -> None`: Identity gate
+
+### Rotation Gates
+
+- `rx(qarg: Qubit, theta: float) -> None`: X-axis rotation
+- `ry(qarg: Qubit, theta: float) -> None`: Y-axis rotation
+- `rz(qarg: Qubit, theta: float) -> None`: Z-axis rotation
+- `p(qarg: Qubit, lam: float) -> None`: Phase gate
+- `u(qarg: Qubit, theta: float, phi: float, lam: float) -> None`: Universal single-qubit gate
+- `u1(qarg: Qubit, lam: float) -> None`: 1-parameter unitary
+- `u2(qarg: Qubit, phi: float, lam: float) -> None`: 2-parameter unitary
+- `u3(qarg: Qubit, theta: float, phi: float, lam: float) -> None`: 3-parameter unitary (same as u)
+
+### Two-Qubit Gates
+
+- `cx(ctrl: Qubit, qarg: Qubit) -> None`: Controlled-X (CNOT) gate
+- `cz(ctrl: Qubit, qarg: Qubit) -> None`: Controlled-Z gate
+- `cy(ctrl: Qubit, qarg: Qubit) -> None`: Controlled-Y gate
+- `ch(ctrl: Qubit, qarg: Qubit) -> None`: Controlled-H gate
+- `csx(ctrl: Qubit, qarg: Qubit) -> None`: Controlled-SX gate
+- `swap(ctrl: Qubit, qarg: Qubit) -> None`: SWAP gate
+
+### Controlled Rotation Gates
+
+- `crx(ctrl: Qubit, qarg: Qubit, lam: float) -> None`: Controlled-RX
+- `cry(ctrl: Qubit, qarg: Qubit, lam: float) -> None`: Controlled-RY
+- `crz(ctrl: Qubit, qarg: Qubit, lam: float) -> None`: Controlled-RZ
+- `cp(ctrl: Qubit, qarg: Qubit, lam: float) -> None`: Controlled-phase
+- `cu1(ctrl: Qubit, qarg: Qubit, lam: float) -> None`: Controlled-U1 (same as cp)
+- `cu3(ctrl: Qubit, qarg: Qubit, theta: float, phi: float, lam: float) -> None`: Controlled-U3
+- `cu(ctrl: Qubit, qarg: Qubit, theta: float, phi: float, lam: float, gamma: float) -> None`: Controlled-U (4-parameter)
+
+### Multi-Qubit Gates
+
+- `ccx(ctrl1: Qubit, ctrl2: Qubit, qarg: Qubit) -> None`: Toffoli gate
+- `cswap(ctrl: Qubit, qarg1: Qubit, qarg2: Qubit) -> None`: Controlled-SWAP (Fredkin)
+- `rxx(ctrl: Qubit, qarg: Qubit, theta: float) -> None`: XX rotation
+- `rzz(ctrl: Qubit, qarg: Qubit, theta: float) -> None`: ZZ rotation
+
+### Mathematical Functions
+
+- `sin(value: float) -> float`: Sine function
+- `cos(value: float) -> float`: Cosine function
+- `tan(value: float) -> float`: Tangent function
+- `exp(value: float) -> float`: Exponential function
+- `ln(value: float) -> float`: Natural logarithm
+- `sqrt(value: float) -> float`: Square root
+
+### Utility
+
+- `barrier(qargs: tuple[Qubit, ...]) -> None`: Barrier instruction
+- `inline(text: str) -> None`: Inline QASM code
+
+## Module Structure
+
+- `bloqade.qasm2.parse`: QASM2 parsing functionality
+- `bloqade.qasm2.emit`: QASM2 emission and code generation
+- `bloqade.qasm2.dialects`: QASM2 dialect definitions
+- `bloqade.qasm2.analysis`: QASM2 validation and analysis
+- `bloqade.qasm2.types`: Type definitions for QASM2 objects
+- `bloqade.qasm2.groups`: Dialect groups for different use cases
+
+See the individual sections for detailed API documentation.

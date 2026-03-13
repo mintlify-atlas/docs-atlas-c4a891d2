@@ -1,0 +1,156 @@
+---
+title: Squin Overview
+description: Circuit programming interface for Bloqade
+---
+
+## Introduction
+
+Squin is Bloqade's circuit programming interface for building quantum programs. It provides a high-level API for applying quantum gates, noise channels, and measurement operations to qubits.
+
+## Key Features
+
+- **Gate Operations**: Apply single-qubit and two-qubit gates
+- **Noise Modeling**: Include realistic noise channels in simulations
+- **Standard Library**: Pre-built functions for common operations
+- **Broadcast Operations**: Apply operations to multiple qubits efficiently
+
+## Module Structure
+
+The Squin module is organized into several submodules:
+
+- `squin.gate`: Low-level gate operations
+- `squin.noise`: Noise channel operations
+- `squin.stdlib`: High-level standard library functions
+- `squin.broadcast`: Batch operations on multiple qubits
+
+## Basic Usage
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def my_circuit():
+    # Allocate qubits
+    q = squin.qalloc(2)
+    
+    # Apply gates
+    squin.h(q[0])
+    squin.cx(q[0], q[1])
+    
+    # Measure
+    squin.measure(q)
+```
+
+## Kernel Decorator
+
+All Squin functions must be decorated with `@squin.kernel` to enable circuit compilation:
+
+```python
+@squin.kernel
+def my_function(qubit: squin.qubit.Qubit) -> None:
+    squin.x(qubit)
+```
+
+## Qubit Management
+
+### qalloc
+
+Allocate qubits for your circuit:
+
+```python
+from bloqade import squin
+
+@squin.kernel
+def example():
+    # Allocate a single qubit
+    q = squin.qalloc(1)
+    
+    # Allocate multiple qubits
+    qubits = squin.qalloc(5)
+```
+
+<ParamField path="n" type="int" required>
+  Number of qubits to allocate
+</ParamField>
+
+<ResponseField name="return" type="ilist.IList[Qubit, n]">
+  A list of allocated qubits
+</ResponseField>
+
+### reset
+
+Reset a qubit to the |0⟩ state:
+
+```python
+squin.reset(qubit)
+```
+
+<ParamField path="qubit" type="Qubit" required>
+  The qubit to reset
+</ParamField>
+
+### measure
+
+Measure a qubit or list of qubits:
+
+```python
+# Measure a single qubit
+result = squin.measure(q)
+
+# Measure multiple qubits
+results = squin.measure(qubits)
+```
+
+<ParamField path="qubit" type="Qubit | ilist.IList[Qubit, Any]" required>
+  The qubit or list of qubits to measure
+</ParamField>
+
+<ResponseField name="return" type="int | ilist.IList[int, Any]">
+  Measurement result(s): 0 or 1 for single qubit, list for multiple qubits
+</ResponseField>
+
+### is_zero / is_one
+
+Check measurement results:
+
+```python
+if squin.is_zero(measurement):
+    # Handle |0⟩ outcome
+    pass
+
+if squin.is_one(measurement):
+    # Handle |1⟩ outcome
+    pass
+```
+
+<ParamField path="measurement" type="int" required>
+  A measurement result
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if the measurement matches the expected outcome
+</ResponseField>
+
+### is_lost
+
+Check if a qubit was lost (atom loss error):
+
+```python
+if squin.is_lost(measurement):
+    # Handle atom loss
+    pass
+```
+
+<ParamField path="measurement" type="int" required>
+  A measurement result
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  True if the qubit was lost
+</ResponseField>
+
+## Next Steps
+
+- [Gates](/api/squin/gates): Learn about available quantum gates
+- [Noise](/api/squin/noise): Add noise models to your circuits
+- [Standard Library](/api/squin/stdlib): Explore high-level functions
